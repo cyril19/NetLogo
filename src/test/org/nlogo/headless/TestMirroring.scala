@@ -3,6 +3,7 @@ package org.nlogo.headless
 import org.scalatest.FunSuite
 import org.scalatest.exceptions.TestFailedException
 import collection.JavaConverters._
+import org.nlogo.util.Pico
 import org.nlogo.api
 import api.AgentVariables
 import org.nlogo.mirror
@@ -130,7 +131,10 @@ class TestMirroring extends FunSuite {
       var state = Mirroring.merge(Map(), u0)
       // should I test that m0 and state are identical? maybe have a separate test for that
       val dummy = new FakeWorld(ws.world, state) { }
-      val renderer = new org.nlogo.render.Renderer(dummy)
+      val pico = new Pico
+      pico.add("org.nlogo.render.Renderer")
+      pico.addComponent(dummy)
+      val renderer = pico.getComponent(classOf[api.RendererInterface])
       renderer.resetCache(ws.patchSize)
       val checksum1 =
         Checksummer.calculateGraphicsChecksum(ws.renderer, ws)
