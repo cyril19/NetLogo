@@ -121,9 +121,8 @@ class TestMirroring extends FunSuite {
       checkAllAgents(ws, state)
     }}
 
-  test("render") {
+  def modelRenderingTest(path: String) {
     withWorkspace{ws =>
-      val path = "models/Sample Models/Biology/Slime.nlogo"
       ws.open(path)
       ws.command("random-seed 0")
       ws.command(ws.previewCommands)
@@ -136,13 +135,21 @@ class TestMirroring extends FunSuite {
       pico.addComponent(dummy)
       val renderer = pico.getComponent(classOf[api.RendererInterface])
       renderer.resetCache(ws.patchSize)
-      val checksum1 =
+      val realChecksum =
         Checksummer.calculateGraphicsChecksum(ws.renderer, ws)
-      val checksum2 =
+      val mirrorChecksum =
         Checksummer.calculateGraphicsChecksum(renderer, ws)
-      val expected = "09116E44949FD665EDBDBD1C6663E0471DD9280A"
-      expect(expected) { checksum1 }
-      expect(expected) { checksum2 }
-    }}
+      expect(realChecksum) { mirrorChecksum }
+    }
+  }
+
+  test("slime") {
+    modelRenderingTest("models/Sample Models/Biology/Slime.nlogo")
+  }
+
+  // takes 40 seconds, commenting out for now
+  // test("fire") {
+  //   modelRenderingTest("models/Sample Models/Earth Science/Fire.nlogo")
+  // }
 
 }
