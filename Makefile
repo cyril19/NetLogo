@@ -20,10 +20,3 @@ SCALA_JAR = $(HOME)/.sbt/boot/scala-$(SCALA_VERSION)/lib/scala-library.jar
 ifneq (,$(findstring CYGWIN,$(shell uname -s)))
     SCALA_JAR := `cygpath -w $(SCALA_JAR)`
 endif
-
-.PHONY: netlogo
-netlogo bin/Scripting.class: bin/Scripting.scala
-	mkdir -p tmp
-	bin/sbt package
-	@echo "@@@ building bin/Scripting.class"
-	cd bin ; JAVA_HOME=$(JAVA_HOME) ../bin/scalac -deprecation Scripting.scala
