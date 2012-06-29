@@ -23,21 +23,21 @@ class TestMirroring extends FunSuite {
 
   def checkAllAgents(ws: HeadlessWorkspace, m: State) {
     expect(ws.world.patches.count) { m.count(_._1.kind == Patch) }
-    for(patch <- ws.world.patches.agents.asScala)
+    for (patch <- ws.world.patches.agents.asScala)
       assert(m(AgentKey(Patch, patch.id)) sameElements
-             patch.variables.take(AgentVariables.getImplicitPatchVariables.size))
+        patch.variables.take(AgentVariables.getImplicitPatchVariables.size))
     expect(ws.world.turtles.count) { m.count(_._1.kind == Turtle) }
-    for(turtle <- ws.world.turtles.agents.asScala)
+    for (turtle <- ws.world.turtles.agents.asScala)
       assert(m(AgentKey(Turtle, turtle.id)) sameElements
-             turtle.variables.take(AgentVariables.getImplicitTurtleVariables.size))
+        turtle.variables.take(AgentVariables.getImplicitTurtleVariables.size))
     expect(ws.world.links.count) { m.count(_._1.kind == Link) }
-    for(link <- ws.world.links.agents.asScala)
+    for (link <- ws.world.links.agents.asScala)
       assert(m(AgentKey(Link, link.id)) sameElements
-             link.variables.take(AgentVariables.getImplicitLinkVariables.size))
+        link.variables.take(AgentVariables.getImplicitLinkVariables.size))
   }
 
   test("init") {
-    withWorkspace{ws =>
+    withWorkspace { ws =>
 
       ws.initForTesting(1)
       val (m0, u0) = diffs(Map(), ws.world)
@@ -53,7 +53,8 @@ class TestMirroring extends FunSuite {
       val (m2, u2) = diffs(m1, ws.world)
       expect((19, (0, 0, 1))) { (m2.size, sizes(u2)) }
       expect("List(Change(1,17.0), Change(10,3.0))") {
-        u2.changes.head._2.toList.toString }
+        u2.changes.head._2.toList.toString
+      }
       checkAllAgents(ws, m2)
 
       ws.command("ask n-of 5 turtles [ die ]")
@@ -67,34 +68,37 @@ class TestMirroring extends FunSuite {
 
       ws.command("ask one-of patches [ set pcolor green ]")
       intercept[TestFailedException] {
-        checkAllAgents(ws, m4) }
+        checkAllAgents(ws, m4)
+      }
       ws.command("clear-patches")
       checkAllAgents(ws, m4)
 
-    }}
+    }
+  }
 
   test("user-declared variables don't matter") {
-    withWorkspace{ws =>
+    withWorkspace { ws =>
       val declarations =
         "patches-own [pfoo] " +
-        "turtles-own [tfoo] " +
-        "links-own   [lfoo]"
+          "turtles-own [tfoo] " +
+          "links-own   [lfoo]"
       ws.initForTesting(1, declarations)
       ws.command("create-turtles 3 [ create-links-with other turtles ]")
       val (m0, u0) = diffs(Map(), ws.world)
       expect((15, (15, 0, 0))) { (m0.size, sizes(u0)) }
       checkAllAgents(ws, m0)
       ws.command("ask patches [ set pfoo 1 ] " +
-                 "ask turtles [ set tfoo 1 ] " +
-                 "ask links   [ set lfoo 1 ]")
+        "ask turtles [ set tfoo 1 ] " +
+        "ask links   [ set lfoo 1 ]")
       checkAllAgents(ws, m0)
       val (m1, u1) = diffs(m0, ws.world)
       expect((15, (0, 0, 0))) { (m1.size, sizes(u1)) }
       checkAllAgents(ws, m1)
-   }}
+    }
+  }
 
   test("merge") {
-    withWorkspace{ws =>
+    withWorkspace { ws =>
       ws.initForTesting(1)
       val (m0, u0) = diffs(Map(), ws.world)
       var state: State = Mirroring.merge(Map(), u0)
@@ -109,7 +113,8 @@ class TestMirroring extends FunSuite {
       expect((24, (15, 0, 6))) { (m1.size, sizes(u1)) }
       checkAllAgents(ws, m1)
       intercept[TestFailedException] {
-        checkAllAgents(ws, state) }
+        checkAllAgents(ws, state)
+      }
       state = Mirroring.merge(state, u1)
       checkAllAgents(ws, state)
       ws.command("ask n-of 3 turtles [ die ]")
@@ -119,17 +124,18 @@ class TestMirroring extends FunSuite {
       checkAllAgents(ws, m2)
       state = Mirroring.merge(state, u2)
       checkAllAgents(ws, state)
-    }}
+    }
+  }
 
   def modelRenderingTest(path: String) {
-    withWorkspace{ws =>
+    withWorkspace { ws =>
       ws.open(path)
       ws.command("random-seed 0")
       ws.command(ws.previewCommands)
       val (m0, u0) = diffs(Map(), ws.world)
       var state = Mirroring.merge(Map(), u0)
       // should I test that m0 and state are identical? maybe have a separate test for that
-      val dummy = new FakeWorld(ws.world, state) { }
+      val dummy = new FakeWorld(ws.world, state) {}
       val pico = new Pico
       pico.add("org.nlogo.render.Renderer")
       pico.addComponent(dummy)
@@ -147,6 +153,10 @@ class TestMirroring extends FunSuite {
     modelRenderingTest("models/Sample Models/Biology/Slime.nlogo")
   }
 
+  test("wolf") {
+    modelRenderingTest("models/Sample Models/Biology/Wolf Sheep Predation.nlogo")
+  }
+  
   // takes 40 seconds, commenting out for now
   // test("fire") {
   //   modelRenderingTest("models/Sample Models/Earth Science/Fire.nlogo")
