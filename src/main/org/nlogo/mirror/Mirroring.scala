@@ -106,8 +106,8 @@ object Mirroring {
       yield Change(i, now(i))
 
   def diffs(oldState: State, currentWorld: api.World): (State, Update) = {
-    var births: Seq[Birth] = Seq()
-    var deaths: Seq[Death] = Seq()
+    var births: Seq[Birth] = Vector()
+    var deaths: Seq[Death] = Vector()
     var changes: Map[AgentKey, Seq[Change]] = Map()
     var newState: State = Map()
     var seen: Set[AgentKey] = Set()
@@ -147,4 +147,3 @@ object Mirroring {
     newValues.toSeq
   }
 }
-
