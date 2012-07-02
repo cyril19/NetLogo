@@ -8,7 +8,7 @@ import api.AgentVariableNumbers._
 abstract class FakeWorld(state: State) extends api.World {
 
   private val (worldVars, patchStates, turtleStates, linkStates) = {
-    // each group will be an sorted seq of (agentId, vars):
+    // each group will be a sorted seq of (agentId, vars):
     val groups = state.toSeq.groupBy(_._1.kind).map {
       case (kind, states) => kind -> states.map {
         case (AgentKey(_, agentId), vars) => agentId -> vars
