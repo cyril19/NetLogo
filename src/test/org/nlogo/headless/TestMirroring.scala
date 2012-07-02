@@ -164,10 +164,9 @@ class TestMirroring extends FunSuite {
   test("wolf") {
     modelRenderingTest("models/Sample Models/Biology/Wolf Sheep Predation.nlogo")
   }
-  
-//   takes 40 seconds, commenting out for now
-//   test("fire") {
-//     modelRenderingTest("models/Sample Models/Earth Science/Fire.nlogo")
-//   }
+
+  test("fire") {
+    modelRenderingTest("models/Sample Models/Earth Science/Fire.nlogo")
+  }
 
 }
