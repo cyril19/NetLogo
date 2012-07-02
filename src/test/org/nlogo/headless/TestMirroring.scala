@@ -161,13 +161,6 @@ class TestMirroring extends FunSuite {
       val mirrorChecksum =
         Checksummer.calculateGraphicsChecksum(renderer, ws)
 
-      def exportPNG(r: api.RendererInterface, suffix: String) =
-        javax.imageio.ImageIO.write(r.exportView(ws), "png",
-          new java.io.File(path + "." + suffix + ".png"))
-      println("=== original ==============================================")
-      exportPNG(ws.renderer, "original")
-      println("=== mirror ==============================================")
-      exportPNG(renderer, "mirror")
       expect(realChecksum) { mirrorChecksum }
     }
   }
