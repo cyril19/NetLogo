@@ -180,10 +180,6 @@ class TestMirroring extends FunSuite {
     modelRenderingTest("models/Sample Models/Biology/Wolf Sheep Predation.nlogo")
   }
 
-//  test("fire") { //   takes 40 seconds, commenting out for now
-//    modelRenderingTest("models/Sample Models/Earth Science/Fire.nlogo")
-//  }
-
   test("team-assembly") {
     modelRenderingTest("models/Sample Models/Networks/Team Assembly.nlogo")
   }
@@ -202,4 +198,7 @@ class TestMirroring extends FunSuite {
   //    modelRenderingTest("models/Sample Models/Networks/Small Worlds.nlogo")
   //  }
 
+  test("fire") {
+    modelRenderingTest("models/Sample Models/Earth Science/Fire.nlogo")
+  }
 }
