@@ -109,7 +109,7 @@ object Mirroring {
     var births: Seq[Birth] = Vector()
     var deaths: Seq[Death] = Vector()
     var changes: Map[AgentKey, Seq[Change]] = Map()
-    var newState: State = Map()
+    var newState: State = oldState
     var seen: Set[AgentKey] = Set()
     for (obj <- allMirrorables(currentWorld)) {
       val key = obj.agentKey
@@ -117,16 +117,19 @@ object Mirroring {
       val vars = (0 until obj.nbVariables).map(obj.getVariable)
       if (oldState.contains(key)) {
         val vd = valueDiffs(was = oldState(key), now = vars)
-        if (vd.nonEmpty)
+        if (vd.nonEmpty) {
           changes += key -> vd
-      } else
+          newState += key -> vars
+        }
+      } else {
         births :+= Birth(key, vars)
-      newState += key -> vars
+        newState += key -> vars
+      }
     }
     for (key <- oldState.keys)
       if (!seen.contains(key)) {
         deaths :+= Death(key)
-        newState -= key // Why? newState only adds the key if it's seen, no? -- NP
+        newState -= key
       }
     (newState, Update(deaths, births, changes))
   }
