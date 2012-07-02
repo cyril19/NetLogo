@@ -8,11 +8,11 @@ import api.AgentVariableNumbers._
 abstract class FakeWorld(state: State) extends api.World {
 
   private val (worldVars, patchStates, turtleStates, linkStates) = {
-    // each group will be a sorted seq of (agentId, vars):
+    // each group will be a seq of (agentId, vars):
     val groups = state.toSeq.groupBy(_._1.kind).map {
       case (kind, states) => kind -> states.map {
         case (AgentKey(_, agentId), vars) => agentId -> vars
-      }.sortBy(_._1)
+      }
     }
     (groups(World).head._2, // world should always be there 
       groups(Patch), // patches should always be there
@@ -21,21 +21,21 @@ abstract class FakeWorld(state: State) extends api.World {
   }
 
   def patchColors: Array[Int] =
-    patchStates
-      .map(_._2(VAR_PCOLOR))
-      .map(api.Color.getRGBInt)
+    fakePatchSet.agentSeq
+      .map(patch => api.Color.getRGBInt(patch.pcolor))
       .toArray
 
-  abstract class FakeAgentSet(agentStates: Seq[(Long, Seq[AnyRef])]) extends api.AgentSet {
-    def toApiAgent(agentId: Long, vars: Seq[AnyRef]): api.Agent
+  private abstract class FakeAgentSet[A <: api.Agent](agentStates: Seq[(Long, Seq[AnyRef])]) extends api.AgentSet {
+    def toApiAgent(agentId: Long, vars: Seq[AnyRef]): A
     def count = agentStates.size
     def `type` = unsupported
     def world: api.World = FakeWorld.this
     def equalAgentSets(other: api.AgentSet) = unsupported
-    def agents: java.lang.Iterable[api.Agent] = agentStates.map((toApiAgent _).tupled).asJava
+    val agentSeq = agentStates.map { case (id, vars) => toApiAgent(id, vars) }.sortBy(_.id)
+    override val agents = (agentSeq: Iterable[api.Agent]).asJava
     override def printName = unsupported
   }
-  trait FakeAgent extends api.Agent {
+  private trait FakeAgent extends api.Agent {
     def world = unsupported
     def classDisplayName = unsupported
     def alpha = unsupported
@@ -44,78 +44,81 @@ abstract class FakeWorld(state: State) extends api.World {
     def isPartiallyTransparent = unsupported
     private def unsupported = throw new UnsupportedOperationException
   }
-  override val turtles: api.AgentSet =
-    new FakeAgentSet(turtleStates) {
-      def toApiAgent(agentId: Long, vars: Seq[AnyRef]): api.Agent =
-        new api.Turtle with FakeAgent {
-          override def variables = vars.toArray
-          override def id = agentId
-          override def xcor = vars(VAR_XCOR).asInstanceOf[Double]
-          override def ycor = vars(VAR_YCOR).asInstanceOf[Double]
-          override def heading = vars(VAR_HEADING).asInstanceOf[Double]
-          override def hidden = vars(VAR_HIDDEN).asInstanceOf[Boolean]
-          override def lineThickness = 0 // Support eventually? "Optical Illusions" and "Halo example" are the only two models that use it
-          override def color = vars(VAR_COLOR)
-          override def labelString = org.nlogo.api.Dump.logoObject(vars(VAR_LABEL))
-          override def hasLabel = labelString.nonEmpty
-          override def labelColor = vars(VAR_COLOR)
-          override def getBreed = turtles // TODO: get the real breed!
-          override def size = vars(VAR_SIZE).asInstanceOf[Double]
-          override def shape = vars(VAR_SHAPE).asInstanceOf[String]
-          override def getBreedIndex = unsupported
-          override def getPatchHere = unsupported
-          override def jump(distance: Double) = unsupported
-          override def heading(d: Double) = unsupported
-        }
-    }
+  private val fakeTurtleSet = new FakeAgentSet[api.Turtle](turtleStates) {
+    def toApiAgent(agentId: Long, vars: Seq[AnyRef]): api.Turtle =
+      new api.Turtle with FakeAgent {
+        override def variables = vars.toArray
+        override def id = agentId
+        override def xcor = vars(VAR_XCOR).asInstanceOf[Double]
+        override def ycor = vars(VAR_YCOR).asInstanceOf[Double]
+        override def heading = vars(VAR_HEADING).asInstanceOf[Double]
+        override def hidden = vars(VAR_HIDDEN).asInstanceOf[Boolean]
+        override def lineThickness = 0 // Support eventually? "Optical Illusions" and "Halo example" are the only two models that use it
+        override def color = vars(VAR_COLOR)
+        override def labelString = org.nlogo.api.Dump.logoObject(vars(VAR_LABEL))
+        override def hasLabel = labelString.nonEmpty
+        override def labelColor = vars(VAR_COLOR)
+        override def getBreed = turtles // TODO: get the real breed!
+        override def size = vars(VAR_SIZE).asInstanceOf[Double]
+        override def shape = vars(VAR_SHAPE).asInstanceOf[String]
+        override def getBreedIndex = unsupported
+        override def getPatchHere = unsupported
+        override def jump(distance: Double) = unsupported
+        override def heading(d: Double) = unsupported
+      }
+  }
+  override def turtles: api.AgentSet = fakeTurtleSet
 
-  def patches: api.AgentSet =
-    new FakeAgentSet(patchStates) {
-      def toApiAgent(agentId: Long, vars: Seq[AnyRef]): api.Agent =
-        new api.Patch with FakeAgent {
-          override def variables = vars.toArray
-          override def id = agentId
-          override def pxcor = vars(VAR_PXCOR).asInstanceOf[Int]
-          override def pycor = vars(VAR_PYCOR).asInstanceOf[Int]
-          override def pcolor = vars(VAR_PCOLOR)
-          override def labelString = org.nlogo.api.Dump.logoObject(vars(VAR_PLABEL))
-          override def hasLabel = labelString.nonEmpty
-          override def labelColor = vars(VAR_PLABELCOLOR)
-          override def getPatchAtOffsets(dx: Double, dy: Double) = unsupported
-          override def size = 1
-          override def shape = ""
-        }
-    }
+  private val fakePatchSet = new FakeAgentSet[api.Patch](patchStates) {
+    def toApiAgent(agentId: Long, vars: Seq[AnyRef]): api.Patch =
+      new api.Patch with FakeAgent {
+        override def variables = vars.toArray
+        override def id = agentId
+        override def pxcor = vars(VAR_PXCOR).asInstanceOf[Int]
+        override def pycor = vars(VAR_PYCOR).asInstanceOf[Int]
+        override def pcolor = vars(VAR_PCOLOR)
+        override def labelString = org.nlogo.api.Dump.logoObject(vars(VAR_PLABEL))
+        override def hasLabel = labelString.nonEmpty
+        override def labelColor = vars(VAR_PLABELCOLOR)
+        override def getPatchAtOffsets(dx: Double, dy: Double) = unsupported
+        override def size = 1
+        override def shape = ""
+      }
+  }
+  override def patches: api.AgentSet = fakePatchSet
 
-  def links: api.AgentSet =
-    new FakeAgentSet(linkStates) {
-      def toApiAgent(agentId: Long, vars: Seq[AnyRef]): api.Agent =
-        new api.Link with FakeAgent {
-          override def variables = vars.toArray
-          override def id = agentId
-          override def getBreedIndex: Int = unsupported
-          override def labelColor: AnyRef = unsupported
-          override def labelString: String = unsupported
-          override def color: AnyRef = unsupported
-          override def hasLabel: Boolean = unsupported
-          override def lineThickness: Double = unsupported
-          override def hidden: Boolean = unsupported
-          override def linkDestinationSize: Double = unsupported
-          override def heading: Double = unsupported
-          override def isDirectedLink: Boolean = unsupported
-          override def x1: Double = unsupported
-          override def y1: Double = unsupported
-          override def y2: Double = unsupported
-          override def x2: Double = unsupported
-          override def midpointY: Double = unsupported
-          override def midpointX: Double = unsupported
-          override def getBreed: api.AgentSet = links // // TODO: get the real breed!
-          override def end2 = vars(VAR_END2).asInstanceOf[api.Turtle]
-          override def end1 = vars(VAR_END1).asInstanceOf[api.Turtle]
-          override def size: Double = unsupported // world.protractor().distance(end1, end2, true) 
-          override def shape = vars(VAR_SHAPE).asInstanceOf[String]
-        }
-    }
+  private val fakeLinkSet = new FakeAgentSet[api.Link](linkStates) {
+    // weirdly, the links appear to end up sorted by end1, end2 in the real world. Not sure how, yet... (NP)
+    override val agents = (agentSeq.sortBy(l => (l.end1.id, l.end2.id)): Iterable[api.Agent]).asJava
+    def toApiAgent(agentId: Long, vars: Seq[AnyRef]): api.Link =
+      new api.Link with FakeAgent {
+        override def variables = vars.toArray
+        override def id = agentId
+        override def getBreedIndex: Int = unsupported
+        override def labelColor: AnyRef = vars(VAR_LLABELCOLOR)
+        override def labelString: String = org.nlogo.api.Dump.logoObject(vars(VAR_LLABEL))
+        override def color: AnyRef = vars(VAR_LCOLOR)
+        override def hasLabel: Boolean = labelString.nonEmpty
+        override def lineThickness: Double = vars(VAR_THICKNESS).asInstanceOf[Double]
+        override def hidden: Boolean = vars(VAR_LHIDDEN).asInstanceOf[Boolean]
+        override def linkDestinationSize: Double = unsupported
+        override def heading: Double = unsupported
+        override def isDirectedLink: Boolean = false // TODO ((AgentSet) variables[VAR_BREED]).isDirected()
+        override def x1: Double = end1.xcor
+        override def y1: Double = end1.ycor
+        override def x2: Double = end2.xcor
+        override def y2: Double = end2.ycor
+        override def midpointY: Double = unsupported
+        override def midpointX: Double = unsupported
+        override def getBreed: api.AgentSet = links // // TODO: get the real breed! VAR_LBREED
+        override def end1 = fakeTurtleSet.agentSeq.find(_.id == vars(VAR_END1).asInstanceOf[Long]).get
+        override def end2 = fakeTurtleSet.agentSeq.find(_.id == vars(VAR_END2).asInstanceOf[Long]).get
+        override def size: Double = 10 // TODO: world.protractor.distance(end1, end2, true) 
+        override def shape = vars(VAR_LSHAPE).asInstanceOf[String]
+        override def toString = id + " link " + end1.id + " " + end2.id // TODO: get breed name in there
+      }
+  }
+  override def links: api.AgentSet = fakeLinkSet
 
   import Mirroring.WorldIsMirrorable.variableIndices._
   private def worldVar[T](i: Int) = worldVars(i).asInstanceOf[T]

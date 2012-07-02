@@ -32,9 +32,13 @@ object Mirroring {
   }
   implicit def toMirrorable[T](x: T)(implicit m: IsMirrorable[T]) = new Mirrorable(x, m)
 
-  trait AgentIsMirrorable[T <: api.Agent] extends IsMirrorable[T] {
-    override def getVariable(x: T, index: Int) = x.getVariable(index)
-    override def agentKey(x: T) = AgentKey(kind, x.id)
+  trait AgentIsMirrorable[A <: api.Agent] extends IsMirrorable[A] {
+    protected val variableOverrides = Map[Int, A => AnyRef]()
+    override def getVariable(agent: A, index: Int) =
+      variableOverrides
+        .get(index).map(_.apply(agent))
+        .getOrElse(agent.getVariable(index))
+    override def agentKey(agent: A) = AgentKey(kind, agent.id)
   }
   implicit object TurtleIsMirrorable extends AgentIsMirrorable[api.Turtle] {
     override val nbVariables = api.AgentVariables.getImplicitTurtleVariables.length
@@ -45,6 +49,10 @@ object Mirroring {
     override val kind = Patch
   }
   implicit object LinkIsMirrorable extends AgentIsMirrorable[api.Link] {
+    import api.AgentVariableNumbers._
+    override val variableOverrides = Map[Int, api.Link => AnyRef](
+      VAR_END1 -> { _.end1.id: java.lang.Long },
+      VAR_END2 -> { _.end2.id: java.lang.Long })
     override val nbVariables = api.AgentVariables.getImplicitLinkVariables.length
     override val kind = Link
   }
