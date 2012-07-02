@@ -31,9 +31,16 @@ class TestMirroring extends FunSuite {
       assert(m(AgentKey(Turtle, turtle.id)) sameElements
         turtle.variables.take(AgentVariables.getImplicitTurtleVariables.size))
     expect(ws.world.links.count) { m.count(_._1.kind == Link) }
-    for (link <- ws.world.links.agents.asScala)
-      assert(m(AgentKey(Link, link.id)) sameElements
-        link.variables.take(AgentVariables.getImplicitLinkVariables.size))
+    for (link <- ws.world.links.agents.asScala) {
+      // exclude overridden variables from check
+      // may need to generalize to turtles and patches eventually
+      val overridesIndices = LinkIsMirrorable.variableOverrides.keys
+      val mirrorVars = m(AgentKey(Link, link.id))
+      val realVars = link.variables.take(AgentVariables.getImplicitLinkVariables.size)
+      assert((mirrorVars zip realVars).zipWithIndex.forall {
+        case ((mv, rv), i) => mv == rv || overridesIndices.exists(_ == i)
+      })
+    }
   }
 
   test("init") {
@@ -153,6 +160,14 @@ class TestMirroring extends FunSuite {
         Checksummer.calculateGraphicsChecksum(ws.renderer, ws)
       val mirrorChecksum =
         Checksummer.calculateGraphicsChecksum(renderer, ws)
+
+      def exportPNG(r: api.RendererInterface, suffix: String) =
+        javax.imageio.ImageIO.write(r.exportView(ws), "png",
+          new java.io.File(path + "." + suffix + ".png"))
+      println("=== original ==============================================")
+      exportPNG(ws.renderer, "original")
+      println("=== mirror ==============================================")
+      exportPNG(renderer, "mirror")
       expect(realChecksum) { mirrorChecksum }
     }
   }
@@ -168,5 +183,23 @@ class TestMirroring extends FunSuite {
   test("fire") {
     modelRenderingTest("models/Sample Models/Earth Science/Fire.nlogo")
   }
+
+  test("team-assembly") {
+    modelRenderingTest("models/Sample Models/Networks/Team Assembly.nlogo")
+  }
+
+  test("preferential-attachment") {
+    modelRenderingTest("models/Sample Models/Networks/Preferential Attachment.nlogo")
+  }
+
+  test("network-example") {
+    modelRenderingTest("models/Code Examples/Network Example.nlogo")
+  }
+
+  //  test("small-worlds") {
+  //    // fails because "Nothing named USER-MESSAGE has been defined"
+  //    // how are we to handle these cases?
+  //    modelRenderingTest("models/Sample Models/Networks/Small Worlds.nlogo")
+  //  }
 
 }
