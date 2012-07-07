@@ -6,7 +6,7 @@ package org.nlogo.api
 object Version {
 
   val noVersion = "NetLogo (no version)";
-  
+
   val (version, buildDate, knownVersions) = {
     val lines = org.nlogo.util.Utils.getResourceAsStringArray("/system/version.txt")
     val version = lines(0)

@@ -33,7 +33,7 @@ mainClass in (Compile, packageBin) := Some("org.nlogo.headless.Main")
 sourceGenerators in Compile <+= Autogen.sourceGeneratorTask
 
 resourceGenerators in Compile <+= I18n.resourceGeneratorTask
- 
+
 Depend.dependTask
 
 libraryDependencies ++= Seq(
