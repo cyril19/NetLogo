@@ -1,5 +1,9 @@
 package org.nlogo.mirror
 
+import scala.collection.JavaConverters.asScalaSetConverter
+import scala.collection.JavaConverters.iterableAsScalaIterableConverter
+
+import org.nlogo.api.AgentVariableNumbers._
 import org.nlogo.api
 
 sealed abstract class Kind
@@ -33,27 +37,40 @@ object Mirroring {
   implicit def toMirrorable[T](x: T)(implicit m: IsMirrorable[T]) = new Mirrorable(x, m)
 
   trait AgentIsMirrorable[A <: api.Agent] extends IsMirrorable[A] {
-    protected val variableOverrides = Map[Int, A => AnyRef]()
+    val implicitVariables: Array[String]
+    val variableOverrides = Map[Int, A => AnyRef]()
+    val extraVariables = Seq[A => AnyRef]()
+    lazy val nbImplicitVariables = implicitVariables.length
+    override lazy val nbVariables = nbImplicitVariables + extraVariables.size
+    lazy val extraVariablesIndices = nbImplicitVariables until nbVariables
     override def getVariable(agent: A, index: Int) =
       variableOverrides
         .get(index).map(_.apply(agent))
-        .getOrElse(agent.getVariable(index))
+        .getOrElse(
+          if (extraVariablesIndices contains index)
+            extraVariables(index - nbImplicitVariables)(agent)
+          else agent.getVariable(index))
     override def agentKey(agent: A) = AgentKey(kind, agent.id)
   }
   implicit object TurtleIsMirrorable extends AgentIsMirrorable[api.Turtle] {
-    override val nbVariables = api.AgentVariables.getImplicitTurtleVariables.length
+    override val implicitVariables = api.AgentVariables.getImplicitTurtleVariables
+    override val variableOverrides = Map[Int, api.Turtle => AnyRef](
+      VAR_BREED -> { _.getBreed.printName })
+    override val extraVariables = Seq[api.Turtle => AnyRef](
+      { _.lineThickness: java.lang.Double })
+    val Seq(tvLineThickness) = extraVariablesIndices
     override val kind = Turtle
   }
   implicit object PatchIsMirrorable extends AgentIsMirrorable[api.Patch] {
-    override val nbVariables = api.AgentVariables.getImplicitPatchVariables.length
+    override val implicitVariables = api.AgentVariables.getImplicitPatchVariables
     override val kind = Patch
   }
   implicit object LinkIsMirrorable extends AgentIsMirrorable[api.Link] {
-    import api.AgentVariableNumbers._
     override val variableOverrides = Map[Int, api.Link => AnyRef](
       VAR_END1 -> { _.end1.id: java.lang.Long },
-      VAR_END2 -> { _.end2.id: java.lang.Long })
-    override val nbVariables = api.AgentVariables.getImplicitLinkVariables.length
+      VAR_END2 -> { _.end2.id: java.lang.Long },
+      VAR_LBREED -> { _.getBreed.printName })
+    override val implicitVariables = api.AgentVariables.getImplicitLinkVariables
     override val kind = Link
   }
 
@@ -72,6 +89,8 @@ object Mirroring {
       _.wrappingAllowedInX: java.lang.Boolean,
       _.wrappingAllowedInY: java.lang.Boolean,
       _.patchesAllBlack: java.lang.Boolean,
+      _.program.breeds.keySet.asScala.toSeq,
+      _.program.linkBreeds.keySet.asScala.toSeq,
       _.program)
     object variableIndices {
       val Seq( // init vals for indices by pattern matching over range of getters
@@ -88,6 +107,8 @@ object Mirroring {
         wvWrappingAllowedInX,
         wvWrappingAllowedInY,
         wvPatchesAllBlack,
+        wvTurtleBreeds,
+        wvLinkBreeds,
         wvProgram
         ) = 0 until WorldIsMirrorable.variableGetters.size
     }

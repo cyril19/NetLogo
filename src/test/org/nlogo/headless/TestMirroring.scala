@@ -21,26 +21,22 @@ class TestMirroring extends FunSuite {
     finally ws.dispose()
   }
 
-  def checkAllAgents(ws: HeadlessWorkspace, m: State) {
-    expect(ws.world.patches.count) { m.count(_._1.kind == Patch) }
-    for (patch <- ws.world.patches.agents.asScala)
-      assert(m(AgentKey(Patch, patch.id)) sameElements
-        patch.variables.take(AgentVariables.getImplicitPatchVariables.size))
-    expect(ws.world.turtles.count) { m.count(_._1.kind == Turtle) }
-    for (turtle <- ws.world.turtles.agents.asScala)
-      assert(m(AgentKey(Turtle, turtle.id)) sameElements
-        turtle.variables.take(AgentVariables.getImplicitTurtleVariables.size))
-    expect(ws.world.links.count) { m.count(_._1.kind == Link) }
-    for (link <- ws.world.links.agents.asScala) {
-      // exclude overridden variables from check
-      // may need to generalize to turtles and patches eventually
-      val overridesIndices = LinkIsMirrorable.variableOverrides.keys
-      val mirrorVars = m(AgentKey(Link, link.id))
-      val realVars = link.variables.take(AgentVariables.getImplicitLinkVariables.size)
-      assert((mirrorVars zip realVars).zipWithIndex.forall {
-        case ((mv, rv), i) => mv == rv || overridesIndices.exists(_ == i)
-      })
+  def checkAllAgents(ws: HeadlessWorkspace, state: State) {
+    def check[A <: api.Agent](agentSet: api.AgentSet)(implicit m: AgentIsMirrorable[A]) {
+      expect(agentSet.count) { state.count(_._1.kind == m.kind) }
+      for (agent <- agentSet.agents.asScala) {
+        val overridesIndices = m.variableOverrides.keys.toSet
+        val mirrorVars = state(AgentKey(m.kind, agent.id))
+        val realVars = agent.variables.take(m.nbImplicitVariables) // this ignores the extra vars
+        assert((mirrorVars zip realVars).zipWithIndex.forall {
+          // for each pair, check if they're equal OR if they are overridden
+          case ((mv, rv), i) => mv == rv || overridesIndices.contains(i)
+        })
+      }
     }
+    check[api.Patch](ws.world.patches)
+    check[api.Turtle](ws.world.turtles)
+    check[api.Link](ws.world.links)
   }
 
   test("init") {
@@ -161,6 +157,14 @@ class TestMirroring extends FunSuite {
       val mirrorChecksum =
         Checksummer.calculateGraphicsChecksum(renderer, ws)
 
+      def exportPNG(r: api.RendererInterface, suffix: String) = {
+        val outputFile = new java.io.File(path).getName + "." + suffix + ".png"
+        val outputPath = new java.io.File("tmp/" + outputFile)
+        javax.imageio.ImageIO.write(r.exportView(ws), "png", outputPath)
+      }
+      exportPNG(ws.renderer, "original")
+      exportPNG(renderer, "mirror")
+
       expect(realChecksum) { mirrorChecksum }
     }
   }
@@ -171,6 +175,10 @@ class TestMirroring extends FunSuite {
 
   test("wolf") {
     modelRenderingTest("models/Sample Models/Biology/Wolf Sheep Predation.nlogo")
+  }
+  
+  test("moths") {
+    modelRenderingTest("models/Sample Models/Biology/Moths.nlogo")
   }
 
   test("fire") {
