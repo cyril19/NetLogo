@@ -5,7 +5,7 @@ package org.nlogo.api
 import java.util.{ ArrayList, LinkedHashMap, List => JList, Map => JMap }
 import collection.JavaConverters._
 
-final class Program(val interfaceGlobals: JList[String]) {
+/*final TEMPORARILY REMOVED WHILE DEVELOPPING (NP) */ class Program(val interfaceGlobals: JList[String]) {
 
   def this() = this(new ArrayList[String])
 
