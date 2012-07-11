@@ -90,8 +90,15 @@ object Mirroring {
       _.wrappingAllowedInY: java.lang.Boolean,
       _.patchesAllBlack: java.lang.Boolean,
       _.program.breeds.keySet.asScala.toSeq,
-      _.program.linkBreeds.keySet.asScala.toSeq
-      )
+      _.program.linkBreeds.keySet.asScala.toSeq,
+      { w =>
+        if (w.trailDrawer.isDirty) {
+          val outputStream = new java.io.ByteArrayOutputStream
+          val img = w.trailDrawer.getDrawing.asInstanceOf[java.awt.image.BufferedImage]
+          javax.imageio.ImageIO.write(img, "png", outputStream)
+          Some(outputStream.toByteArray())
+        } else None
+      })
     object variableIndices {
       val Seq( // init vals for indices by pattern matching over range of getters
         wvPatchesWithLabels,
@@ -108,7 +115,8 @@ object Mirroring {
         wvWrappingAllowedInY,
         wvPatchesAllBlack,
         wvTurtleBreeds,
-        wvLinkBreeds
+        wvLinkBreeds,
+        wvTrailDrawing
         ) = 0 until WorldIsMirrorable.variableGetters.size
     }
     override def getVariable(world: api.World, index: Int) = variableGetters(index)(world)

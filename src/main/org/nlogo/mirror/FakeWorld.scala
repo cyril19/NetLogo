@@ -142,6 +142,8 @@ abstract class FakeWorld(state: State) extends api.World {
   def wrappingAllowedInY = worldVar[Boolean](wvWrappingAllowedInY)
   def patchesAllBlack = worldVar[Boolean](wvPatchesAllBlack)
 
+  def trailDrawing = worldVar[Option[Array[Byte]]](wvTrailDrawing)
+  
   def program = new api.Program {
     private def makeBreeds[A <: FakeAgent: Manifest](
       breedWorldVar: Int, genericName: String,
@@ -188,5 +190,7 @@ abstract class FakeWorld(state: State) extends api.World {
   def turtlesOwnNameAt(i: Int): String = unsupported
   def breedsOwnNameAt(breed: api.AgentSet, i: Int): String = unsupported
   def allStoredValues: Iterator[AnyRef] = unsupported
+  def trailDrawer: api.TrailDrawerInterface = unsupported
+
   private def unsupported = throw new UnsupportedOperationException
 }

@@ -142,16 +142,37 @@ public abstract strictfp class AbstractRenderer
     // now paint turtles & labels
     topology.fillBackground(g);
     paintPatches(g, settings.patchSize());
-    // Since the drawing scales when we zoom, even drawing a blank
-    // gets expensive very fast. -- 10/06/05 CLB
-    // but for some reason on Windows some models run a lot
-    // faster on some machines if we uselessly draw the blank
-    // layer -- go figure! it's only worth doing if there
-    // are turtles though - ST 11/23/05
-    if (!_trailDrawer.drawingBlank || (WINDOWS && anyTurtles() && !settings.isHeadless())) {
-      topology.paintViewImage
-          (g, _trailDrawer.getAndCreateDrawing(false));
-    }
+
+	if (world instanceof org.nlogo.mirror.FakeWorld) {
+		// This instanceof check is a fairly hugly hack. Hopefully, it
+		// will be replaced at some point down the road. NP 2012-07-11
+		org.nlogo.mirror.FakeWorld w = (org.nlogo.mirror.FakeWorld) world;
+		if (w.trailDrawing().isDefined()) {
+			try {
+				_trailDrawer.readImage(new java.io.ByteArrayInputStream(w.trailDrawing().get()));
+			} catch (java.io.IOException e) {
+				/*
+				 * I don't like to swallow the exception, but I'm not
+				 * sure what else do to. Since we are using a
+				 * ByteArrayInputStream, it should be relatively safe
+				 * that no exception occurs... but still... ? NP
+				 * 2012-07-11
+				 */
+			}
+			topology.paintViewImage(g, _trailDrawer.getAndCreateDrawing(false));
+		}
+	} else {
+		// Since the drawing scales when we zoom, even drawing a blank
+		// gets expensive very fast. -- 10/06/05 CLB
+		// but for some reason on Windows some models run a lot
+		// faster on some machines if we uselessly draw the blank
+		// layer -- go figure! it's only worth doing if there
+		// are turtles though - ST 11/23/05
+		if (!_trailDrawer.drawingBlank || (WINDOWS && anyTurtles() && !settings.isHeadless())) {
+			topology.paintViewImage(g, _trailDrawer.getAndCreateDrawing(false));
+		}
+	}
+	
     // Turn on accurate stroking for precise subpixel
     // positioning.  On Mac this seems to be the default,
     // but on Windows we need to ask for it. - ST 8/19/05
