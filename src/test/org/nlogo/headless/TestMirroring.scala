@@ -178,8 +178,8 @@ class TestMirroring extends FunSuite {
     modelRenderingTest("models/Sample Models/Biology/Wolf Sheep Predation.nlogo")
   }
   
-  test("moths") {
-    modelRenderingTest("models/Sample Models/Biology/Moths.nlogo")
+  test("fireworks") {
+    modelRenderingTest("models/Sample Models/Art/Fireworks.nlogo")
   }
 
   test("team-assembly") {

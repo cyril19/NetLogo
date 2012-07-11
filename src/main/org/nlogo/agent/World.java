@@ -134,6 +134,10 @@ public strictfp class World
     this.trailDrawer = trailDrawer;
   }
 
+  public TrailDrawerInterface trailDrawer() {
+	return trailDrawer;
+  }
+  
   /// get/set methods for World Topology
   Topology getTopology() {
     return topology;
