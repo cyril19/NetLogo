@@ -144,8 +144,12 @@ public abstract strictfp class AbstractRenderer
     paintPatches(g, settings.patchSize());
 
 	if (world instanceof org.nlogo.mirror.FakeWorld) {
-		// This instanceof check is a fairly hugly hack. Hopefully, it
-		// will be replaced at some point down the road. NP 2012-07-11
+		/*
+		 * This instanceof check is a fairly hugly hack. Hopefully, it will
+		 * be replaced at some point down the road. If we do change it in
+		 * some appropriate way, consider removing the dependency from
+		 * render to mirror in Depends.scala. NP 2012-07-11
+		 */
 		org.nlogo.mirror.FakeWorld w = (org.nlogo.mirror.FakeWorld) world;
 		if (w.trailDrawing().isDefined()) {
 			try {

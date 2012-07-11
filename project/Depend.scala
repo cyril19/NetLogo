@@ -56,7 +56,7 @@ object Depend {
       "prim/gui" -> List("window"),
       "prim/plot" -> List("nvm","plot"),
       "properties" -> List("window"),
-      "render" -> List("shape"),
+      "render" -> List("mirror", "shape"),
       "shape" -> List("api"),
       "shape/editor" -> List("shape","swing"),
       "swing" -> List("awt"),
