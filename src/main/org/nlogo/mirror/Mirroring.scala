@@ -90,8 +90,8 @@ object Mirroring {
       _.wrappingAllowedInY: java.lang.Boolean,
       _.patchesAllBlack: java.lang.Boolean,
       _.program.breeds.keySet.asScala.toSeq,
-      _.program.linkBreeds.keySet.asScala.toSeq,
-      _.program)
+      _.program.linkBreeds.keySet.asScala.toSeq
+      )
     object variableIndices {
       val Seq( // init vals for indices by pattern matching over range of getters
         wvPatchesWithLabels,
@@ -108,8 +108,7 @@ object Mirroring {
         wvWrappingAllowedInY,
         wvPatchesAllBlack,
         wvTurtleBreeds,
-        wvLinkBreeds,
-        wvProgram
+        wvLinkBreeds
         ) = 0 until WorldIsMirrorable.variableGetters.size
     }
     override def getVariable(world: api.World, index: Int) = variableGetters(index)(world)
