@@ -152,6 +152,7 @@ class TestMirroring extends FunSuite {
       pico.addComponent(dummy)
       val renderer = pico.getComponent(classOf[api.RendererInterface])
       renderer.resetCache(ws.patchSize)
+      
       val realChecksum =
         Checksummer.calculateGraphicsChecksum(ws.renderer, ws)
       val mirrorChecksum =

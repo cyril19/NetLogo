@@ -59,7 +59,7 @@ abstract class FakeWorld(state: State) extends api.World {
     override def labelString = org.nlogo.api.Dump.logoObject(vars(VAR_LABEL))
     override def hasLabel = labelString.nonEmpty
     override def labelColor = vars(VAR_COLOR)
-    override def getBreed = program.breeds.get(vars(VAR_BREED)).asInstanceOf[api.AgentSet]
+    override def getBreed = Option(program.breeds.get(vars(VAR_BREED))).getOrElse(turtles).asInstanceOf[api.AgentSet]
     override def size = vars(VAR_SIZE).asInstanceOf[Double]
     override def shape = vars(VAR_SHAPE).asInstanceOf[String]
     override def getBreedIndex = unsupported
@@ -110,7 +110,7 @@ abstract class FakeWorld(state: State) extends api.World {
     override def y2: Double = end2.ycor
     override def midpointY: Double = unsupported
     override def midpointX: Double = unsupported
-    override def getBreed: api.AgentSet = program.linkBreeds.get(vars(VAR_LBREED)).asInstanceOf[api.AgentSet]
+    override def getBreed: api.AgentSet = Option(program.linkBreeds.get(vars(VAR_LBREED))).getOrElse(links).asInstanceOf[api.AgentSet]
     // maybe I should keep a map from id to agent somewhere? Not sure it's worth it, though...
     override def end1 = turtles.agentSeq.find(_.id == vars(VAR_END1).asInstanceOf[Long]).get
     override def end2 = turtles.agentSeq.find(_.id == vars(VAR_END2).asInstanceOf[Long]).get
@@ -150,8 +150,7 @@ abstract class FakeWorld(state: State) extends api.World {
         val agentSeq = agentSet.agentSeq.filter(_.vars(VAR_BREED) == breedName)
         breedName -> new FakeAgentSet[A](agentSeq).asInstanceOf[AnyRef]
       }
-      val breedSeq = (genericName -> agentSet) +:
-        worldVar[Seq[String]](breedWorldVar).map(nameToAgentSet)
+      val breedSeq = worldVar[Seq[String]](breedWorldVar).map(nameToAgentSet)
       val breeds = new java.util.LinkedHashMap[String, AnyRef]
       for ((breedName, agentSet) <- breedSeq)
         breeds.put(breedName, agentSet)
