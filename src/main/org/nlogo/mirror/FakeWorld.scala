@@ -37,6 +37,7 @@ abstract class FakeWorld(state: State) extends api.World {
   }
   trait FakeAgent extends api.Agent {
     val vars: Seq[AnyRef]
+    override def variables = unsupported
     def world = unsupported
     def classDisplayName = unsupported
     def alpha = unsupported
@@ -48,7 +49,6 @@ abstract class FakeWorld(state: State) extends api.World {
   class FakeTurtle(agentId: Long, val vars: Seq[AnyRef])
     extends api.Turtle with FakeAgent {
     import Mirroring.TurtleIsMirrorable._
-    override def variables = vars.toArray
     override def id = agentId
     override def xcor = vars(VAR_XCOR).asInstanceOf[Double]
     override def ycor = vars(VAR_YCOR).asInstanceOf[Double]
@@ -75,7 +75,6 @@ abstract class FakeWorld(state: State) extends api.World {
 
   class FakePatch(agentId: Long, val vars: Seq[AnyRef])
     extends api.Patch with FakeAgent {
-    override def variables = vars.toArray
     override def id = agentId
     override def pxcor = vars(VAR_PXCOR).asInstanceOf[Int]
     override def pycor = vars(VAR_PYCOR).asInstanceOf[Int]
@@ -94,7 +93,6 @@ abstract class FakeWorld(state: State) extends api.World {
     }.sortBy(_.id))
 
   class FakeLink(agentId: Long, val vars: Seq[AnyRef]) extends api.Link with FakeAgent {
-    override def variables = vars.toArray
     override def id = agentId
     override def getBreedIndex: Int = unsupported
     override def labelColor: AnyRef = vars(VAR_LLABELCOLOR)
