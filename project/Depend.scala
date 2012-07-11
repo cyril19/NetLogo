@@ -49,7 +49,7 @@ object Depend {
       "prim/etc" -> List("nvm"),
       "prim/file" -> List("nvm"),
       "prim/plot" -> List("nvm","plot"),
-      "render" -> List("shape"),
+      "render" -> List("mirror", "shape"),
       "shape" -> List("api"),
       "util" -> Nil,
       "workspace" -> List("nvm", "plot"))
