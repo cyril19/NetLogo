@@ -203,4 +203,13 @@ class TestMirroring extends FunSuite {
   test("fire") {
     modelRenderingTest("models/Sample Models/Earth Science/Fire.nlogo")
   }
+  
+  test("Echo model for testing turtle labels") {
+    modelRenderingTest("models/Sample Models/Biology/Evolution/Echo.nlogo")
+  }
+  
+  test("Color Chart Example for testing patch labels") {
+    modelRenderingTest("models/Code Examples/Color Chart Example.nlogo")
+  }
+  
 }
