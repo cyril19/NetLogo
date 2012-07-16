@@ -58,7 +58,7 @@ abstract class FakeWorld(state: State) extends api.World {
     override def color = vars(VAR_COLOR)
     override def labelString = org.nlogo.api.Dump.logoObject(vars(VAR_LABEL))
     override def hasLabel = labelString.nonEmpty
-    override def labelColor = vars(VAR_COLOR)
+    override def labelColor = vars(VAR_LABELCOLOR)
     override def getBreed = Option(program.breeds.get(vars(VAR_BREED))).getOrElse(turtles).asInstanceOf[api.AgentSet]
     override def size = vars(VAR_SIZE).asInstanceOf[Double]
     override def shape = vars(VAR_SHAPE).asInstanceOf[String]
@@ -164,11 +164,12 @@ abstract class FakeWorld(state: State) extends api.World {
     override def dump: java.lang.String = unsupported
   }
 
+  def getPatch(i: Int): api.Patch = patches.agentSeq(i)
+  
   // unsupported
   def wrap(pos: Double, min: Double, max: Double): Double = unsupported
   def ticks: Double = unsupported
   def observer: api.Observer = unsupported
-  def getPatch(i: Int): api.Patch = unsupported
   def getPatchAt(x: Double, y: Double): api.Patch = unsupported
   def fastGetPatchAt(x: Int, y: Int): api.Patch = unsupported
   def followOffsetX: Double = unsupported

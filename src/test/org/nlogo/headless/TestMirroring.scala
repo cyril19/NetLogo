@@ -152,7 +152,7 @@ class TestMirroring extends FunSuite {
       pico.addComponent(dummy)
       val renderer = pico.getComponent(classOf[api.RendererInterface])
       renderer.resetCache(ws.patchSize)
-      
+
       val realChecksum =
         Checksummer.calculateGraphicsChecksum(ws.renderer, ws)
       val mirrorChecksum =
@@ -177,7 +177,7 @@ class TestMirroring extends FunSuite {
   test("wolf") {
     modelRenderingTest("models/Sample Models/Biology/Wolf Sheep Predation.nlogo")
   }
-  
+
   test("fireworks") {
     modelRenderingTest("models/Sample Models/Art/Fireworks.nlogo")
   }
@@ -203,5 +203,17 @@ class TestMirroring extends FunSuite {
   //    // how are we to handle these cases?
   //    modelRenderingTest("models/Sample Models/Networks/Small Worlds.nlogo")
   //  }
+
+  test("fire") {
+    modelRenderingTest("models/Sample Models/Earth Science/Fire.nlogo")
+  }
+
+  test("Echo model for testing turtle labels") {
+    modelRenderingTest("models/Sample Models/Biology/Evolution/Echo.nlogo")
+  }
+
+  test("Color Chart Example for testing patch labels") {
+    modelRenderingTest("models/Code Examples/Color Chart Example.nlogo")
+  }
 
 }

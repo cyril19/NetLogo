@@ -62,6 +62,9 @@ object Mirroring {
     override val kind = Turtle
   }
   implicit object PatchIsMirrorable extends AgentIsMirrorable[api.Patch] {
+    override val variableOverrides = Map[Int, api.Patch => AnyRef](
+      VAR_PXCOR -> { _.pxcor: java.lang.Integer },
+      VAR_PYCOR -> { _.pycor: java.lang.Integer })
     override val implicitVariables = api.AgentVariables.getImplicitPatchVariables
     override val kind = Patch
   }
