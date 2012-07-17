@@ -157,11 +157,10 @@ public abstract strictfp class AbstractRenderer
               .trailDrawing().get()));
         } catch (java.io.IOException e) {
           /*
-           * I don't like to swallow the exception, but I'm not sure what else
-           * do to. Since we are using a ByteArrayInputStream, it should be
-           * relatively safe that no exception occurs... but still... ? NP
-           * 2012-07-11
+           * Since we are using a ByteArrayInputStream, it should be safe that
+           * no exception occurs NP * 2012-07-11
            */
+          throw new IllegalStateException(e);
         }
         topology.paintViewImage(g, _trailDrawer.getAndCreateDrawing(false));
       }
