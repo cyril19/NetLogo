@@ -11,6 +11,7 @@ sealed abstract class Kind
 case object Patch extends Kind
 case object Turtle extends Kind
 case object Link extends Kind
+case object Observer extends Kind
 case object World extends Kind
 case object Plot extends Kind
 case object PlotPen extends Kind
@@ -25,192 +26,166 @@ case class Update(deaths: Seq[Death], births: Seq[Birth], changes: Map[AgentKey,
 
 object Mirroring {
 
-  trait IsMirrorable[T] {
-    def getVariable(obj: T, index: Int): AnyRef
-    def agentKey(obj: T) = AgentKey(kind, id(obj))
+  abstract class Mirrorable[+T](obj: T) {
     def nbVariables: Int
+    def agentKey: AgentKey
     def kind: Kind
-    def id(obj: T): Long
+    val variables: Map[Int, AnyRef]
+    def getVariable(index: Int) = variables(index)
   }
 
-  class Mirrorable[+T](obj: T, m: IsMirrorable[T]) {
-    def nbVariables = m.nbVariables
-    def getVariable(index: Int) = m.getVariable(obj, index)
-    def agentKey = m.agentKey(obj)
-    def kind = m.kind
+  abstract class MirrorableAgent[T <: api.Agent](agent: T) extends Mirrorable(agent) {
+    override def getVariable(index: Int) = variables.getOrElse(index, agent.getVariable(index))
   }
 
-  implicit def toMirrorable[T](x: T)(implicit m: IsMirrorable[T]) = new Mirrorable(x, m)
-
-  trait AgentIsMirrorable[T <: api.Agent] extends IsMirrorable[T] {
-    def id(obj: T) = obj.id
-    val implicitVariables: Array[String]
-    val variableOverrides = Map[Int, T => AnyRef]()
-    val extraVariables = Seq[T => AnyRef]()
-    lazy val nbImplicitVariables = implicitVariables.length
-    override lazy val nbVariables = nbImplicitVariables + extraVariables.size
-    lazy val extraVariablesIndices = nbImplicitVariables until nbVariables
-    override def getVariable(agent: T, index: Int) =
-      variableOverrides
-        .get(index).map(_.apply(agent))
-        .getOrElse(
-          if (extraVariablesIndices contains index)
-            extraVariables(index - nbImplicitVariables)(agent)
-          else agent.getVariable(index))
+  object MirrorableTurtle {
+    val tvLineThickness = api.AgentVariables.getImplicitTurtleVariables.size
+  }
+  class MirrorableTurtle(turtle: api.Turtle) extends MirrorableAgent(turtle) {
+    import MirrorableTurtle._
+    override def kind = Turtle
+    override def nbVariables = api.AgentVariables.getImplicitTurtleVariables.size + 1
+    override def agentKey = AgentKey(kind, turtle.id)
+    override val variables = Map(
+      VAR_BREED -> turtle.getBreed.printName,
+      tvLineThickness -> double2Double(turtle.lineThickness))
   }
 
-  implicit object TurtleIsMirrorable extends AgentIsMirrorable[api.Turtle] {
-    override val implicitVariables = api.AgentVariables.getImplicitTurtleVariables
-    override val variableOverrides = Map[Int, api.Turtle => AnyRef](
-      VAR_BREED -> { _.getBreed.printName })
-    override val extraVariables = Seq[api.Turtle => AnyRef](
-      { _.lineThickness: java.lang.Double })
-    val Seq(tvLineThickness) = extraVariablesIndices
-    override val kind = Turtle
+  class MirrorablePatch(patch: api.Patch) extends MirrorableAgent(patch) {
+    override def kind = Patch
+    override def nbVariables = api.AgentVariables.getImplicitPatchVariables.size
+    override def agentKey = AgentKey(kind, patch.id)
+    override val variables = Map(
+      VAR_PXCOR -> int2Integer(patch.pxcor),
+      VAR_PYCOR -> int2Integer(patch.pycor))
   }
 
-  implicit object PatchIsMirrorable extends AgentIsMirrorable[api.Patch] {
-    override val variableOverrides = Map[Int, api.Patch => AnyRef](
-      VAR_PXCOR -> { _.pxcor: java.lang.Integer },
-      VAR_PYCOR -> { _.pycor: java.lang.Integer })
-    override val implicitVariables = api.AgentVariables.getImplicitPatchVariables
-    override val kind = Patch
+  class MirrorableLink(link: api.Link) extends MirrorableAgent(link) {
+    override def kind = Link
+    override def nbVariables = api.AgentVariables.getImplicitLinkVariables.size
+    override def agentKey = AgentKey(kind, link.id)
+    override val variables = Map(
+      VAR_END1 -> long2Long(link.end1.id),
+      VAR_END2 -> long2Long(link.end2.id),
+      VAR_LBREED -> link.getBreed.printName)
   }
 
-  implicit object LinkIsMirrorable extends AgentIsMirrorable[api.Link] {
-    override val variableOverrides = Map[Int, api.Link => AnyRef](
-      VAR_END1 -> { _.end1.id: java.lang.Long },
-      VAR_END2 -> { _.end2.id: java.lang.Long },
-      VAR_LBREED -> { _.getBreed.printName })
-    override val implicitVariables = api.AgentVariables.getImplicitLinkVariables
-    override val kind = Link
+  object MirrorableWorld {
+    val Seq(
+      wvPatchesWithLabels,
+      wvTurtleShapeList,
+      wvlinkShapeList,
+      wvPatchSize,
+      wvWorldWidth,
+      wvWorldHeight,
+      wvMinPxcor,
+      wvMinPycor,
+      wvMaxPxcor,
+      wvMaxPycor,
+      wvWrappingAllowedInX,
+      wvWrappingAllowedInY,
+      wvPatchesAllBlack,
+      wvTurtleBreeds,
+      wvLinkBreeds,
+      wvTrailDrawing
+      ) = 0 until 16
   }
-
-  trait OtherIsMirrorable[T] extends IsMirrorable[T] {
-    val variableGetters: Seq[T => AnyRef]
-    override def getVariable(obj: T, index: Int) = variableGetters(index)(obj)
-    override lazy val nbVariables = variableGetters.size
-  }
-
-  implicit object WorldIsMirrorable extends OtherIsMirrorable[api.World] {
-    override val kind = World
-    override def id(obj: api.World) = 0L // dummy id for the one and only world
-    override val variableGetters = Seq[api.World => AnyRef](
-      _.patchesWithLabels: java.lang.Integer,
-      _.turtleShapeList, // probably not good enough to just pass the shapelists like that...
-      _.linkShapeList,
-      _.patchSize: java.lang.Double,
-      _.worldWidth: java.lang.Integer,
-      _.worldHeight: java.lang.Integer,
-      _.minPxcor: java.lang.Integer,
-      _.minPycor: java.lang.Integer,
-      _.maxPxcor: java.lang.Integer,
-      _.maxPycor: java.lang.Integer,
-      _.wrappingAllowedInX: java.lang.Boolean,
-      _.wrappingAllowedInY: java.lang.Boolean,
-      _.patchesAllBlack: java.lang.Boolean,
-      _.program.breeds.keySet.asScala.toSeq,
-      _.program.linkBreeds.keySet.asScala.toSeq,
-      { w =>
-        if (w.trailDrawer.isDirty) {
+  class MirrorableWorld(world: api.World) extends Mirrorable(world) {
+    import MirrorableWorld._
+    override def kind = World
+    override def agentKey = AgentKey(kind, 0) // dummy id for the one and unique world
+    override def nbVariables = 16
+    override val variables = Map(
+      wvPatchesWithLabels -> int2Integer(world.patchesWithLabels),
+      wvTurtleShapeList -> world.turtleShapeList, // probably not good enough to just pass the shapelists like that...
+      wvlinkShapeList -> world.linkShapeList,
+      wvPatchSize -> double2Double(world.patchSize),
+      wvWorldWidth -> int2Integer(world.worldWidth),
+      wvWorldHeight -> int2Integer(world.worldHeight),
+      wvMinPxcor -> int2Integer(world.minPxcor),
+      wvMinPycor -> int2Integer(world.minPycor),
+      wvMaxPxcor -> int2Integer(world.maxPxcor),
+      wvMaxPycor -> int2Integer(world.maxPycor),
+      wvWrappingAllowedInX -> boolean2Boolean(world.wrappingAllowedInX),
+      wvWrappingAllowedInY -> boolean2Boolean(world.wrappingAllowedInY),
+      wvPatchesAllBlack -> boolean2Boolean(world.patchesAllBlack),
+      wvTurtleBreeds -> world.program.breeds.keySet.asScala.toSeq,
+      wvLinkBreeds -> world.program.linkBreeds.keySet.asScala.toSeq,
+      wvTrailDrawing ->
+        (if (world.trailDrawer.isDirty) {
           val outputStream = new java.io.ByteArrayOutputStream
-          val img = w.trailDrawer.getDrawing.asInstanceOf[java.awt.image.BufferedImage]
+          val img = world.trailDrawer.getDrawing.asInstanceOf[java.awt.image.BufferedImage]
           javax.imageio.ImageIO.write(img, "png", outputStream)
           Some(outputStream.toByteArray())
-        } else None
-      })
-    object variableIndices {
-      val Seq( // init vals for indices by pattern matching over range of getters
-        wvPatchesWithLabels,
-        wvTurtleShapeList,
-        wvlinkShapeList,
-        wvPatchSize,
-        wvWorldWidth,
-        wvWorldHeight,
-        wvMinPxcor,
-        wvMinPycor,
-        wvMaxPxcor,
-        wvMaxPycor,
-        wvWrappingAllowedInX,
-        wvWrappingAllowedInY,
-        wvPatchesAllBlack,
-        wvTurtleBreeds,
-        wvLinkBreeds,
-        wvTrailDrawing
-        ) = 0 until variableGetters.size
-    }
+        } else None))
   }
 
-  class RichPlot(val p: plot.Plot, val ws: AbstractWorkspaceScala) {
-    val id: Int = ws.plotManager.plots.indexOf(p)
-  }
-  implicit object RichPlotIsMirrorable extends OtherIsMirrorable[RichPlot] {
-    override val kind = Plot
-    override def id(p: RichPlot) = p.id
-    override val variableGetters = Seq[RichPlot => AnyRef](
-      _.p.xMin: java.lang.Double,
-      _.p.xMax: java.lang.Double,
-      _.p.yMin: java.lang.Double,
-      _.p.yMax: java.lang.Double,
-      _.p.legendIsOpen: java.lang.Boolean)
-    object variableIndices {
-      val Seq( // init vals for indices by pattern matching over range of getters
-        pvXMin,
-        pvXMax,
-        pvYMin,
-        pvYMax,
-        pvLegendIsOpen
-        ) = 0 until variableGetters.size
-    }
+  object MirrorablePlot {
+    val Seq(
+      pvXMin,
+      pvXMax,
+      pvYMin,
+      pvYMax,
+      pvLegendIsOpen
+      ) = 0 until 5
   }
 
-  class RichPlotPen(val pen: plot.PlotPen, val ws: AbstractWorkspaceScala) {
-    val id = {
+  class MirrorablePlot(val p: plot.Plot, val ws: AbstractWorkspaceScala) extends Mirrorable(p) {
+    import MirrorablePlot._
+    override def kind = Plot
+    override def agentKey = AgentKey(kind, ws.plotManager.plots.indexOf(p))
+    override def nbVariables = 5
+    override  val variables = Map(
+      pvXMin -> double2Double(p.xMin),
+      pvXMax -> double2Double(p.xMax),
+      pvYMin -> double2Double(p.yMin),
+      pvYMax -> double2Double(p.yMax),
+      pvLegendIsOpen -> boolean2Boolean(p.legendIsOpen))
+  }
+
+  object MirrorablePlotPen {
+    val Seq( // init vals for indices by pattern matching over range of getters
+      ppvName,
+      ppvIsDown,
+      ppvMode,
+      ppvInterval,
+      ppvColor,
+      ppvX,
+      ppvPoints
+      ) = 0 until 7
+  }
+  class MirrorablePlotPen(val pen: plot.PlotPen, val ws: AbstractWorkspaceScala) extends Mirrorable(pen) {
+    import MirrorablePlotPen._
+    override def kind = PlotPen
+    override def agentKey = {
       // we combine the plot id and the pen id (which are both 
       // originally Ints) into a single Long:
       val plotId: Long = ws.plotManager.plots.indexOf(pen.plot)
       val penId: Long = pen.plot.pens.indexOf(pen)
-      (plotId << 32) | penId
+      AgentKey(kind, (plotId << 32) | penId)
     }
-  }
-  implicit object RichPlotPenIsMirrorable extends OtherIsMirrorable[RichPlotPen] {
-    override val kind = PlotPen
-    override def id(richPen: RichPlotPen) = richPen.id
-    override val variableGetters = Seq[RichPlotPen => AnyRef](
-      _.pen.name,
-      _.pen.isDown: java.lang.Boolean,
-      _.pen.mode: java.lang.Integer,
-      _.pen.interval: java.lang.Double,
-      rp => org.nlogo.api.Color.argbToColor(rp.pen.color),
-      _.pen.x: java.lang.Double,
-      _.pen.points.toList)
-    object variableIndices {
-      val Seq( // init vals for indices by pattern matching over range of getters
-        ppvName,
-        ppvIsDown,
-        ppvMode,
-        ppvColor,
-        ppvX,
-        ppvPoints
-        ) = 0 until variableGetters.size
-    }
+    override def nbVariables = 7
+    override val variables = Map(
+      ppvName -> pen.name,
+      ppvIsDown -> boolean2Boolean(pen.isDown),
+      ppvMode -> int2Integer(pen.mode),
+      ppvInterval -> double2Double(pen.interval),
+      ppvColor -> org.nlogo.api.Color.argbToColor(pen.color),
+      ppvX -> double2Double(pen.x),
+      ppvPoints -> pen.points.toList)
   }
 
   private def allMirrorables(workspace: AbstractWorkspaceScala) = {
-    def mirrorables[A: IsMirrorable](agentSet: api.AgentSet) = {
-      import collection.JavaConverters._
-      agentSet.agents.asScala.map(_.asInstanceOf[A]).map(toMirrorable[A](_))
-    }
+    import collection.JavaConverters._
     val world: api.World = workspace.world
-    val turtles = mirrorables[api.Turtle](world.turtles)
-    val patches = mirrorables[api.Patch](world.patches)
-    val links = mirrorables[api.Link](world.links)
-    val worlds = Iterable(toMirrorable(world))
+    val turtles = world.turtles.agents.asScala.map(t => new MirrorableTurtle(t.asInstanceOf[api.Turtle]))
+    val patches = world.patches.agents.asScala.map(p => new MirrorablePatch(p.asInstanceOf[api.Patch]))
+    val links = world.links.agents.asScala.map(l => new MirrorableLink(l.asInstanceOf[api.Link]))
+    val worldIterable = Iterable(new MirrorableWorld(world))
     val plotList = workspace.plotManager.plots
-    val plots = plotList.map(p => toMirrorable(new RichPlot(p, workspace)))
-    val plotPens = for { p <- plotList; pp <- p.pens }
-      yield toMirrorable(new RichPlotPen(pp, workspace))
-    (worlds ++ turtles ++ patches ++ links ++ plots ++ plotPens)
+    val plots = for { p <- plotList } yield new MirrorablePlot(p, workspace)
+    val plotPens = for { p <- plotList; pp <- p.pens } yield new MirrorablePlotPen(pp, workspace)
+    (worldIterable ++ turtles ++ patches ++ links ++ plots ++ plotPens)
   }
 
   type State = Map[AgentKey, Seq[AnyRef]]

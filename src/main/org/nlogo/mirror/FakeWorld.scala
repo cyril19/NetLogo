@@ -48,7 +48,7 @@ abstract class FakeWorld(state: State) extends api.World {
 
   class FakeTurtle(agentId: Long, val vars: Seq[AnyRef])
     extends api.Turtle with FakeAgent {
-    import Mirroring.TurtleIsMirrorable._
+    import Mirroring.MirrorableTurtle._
     override def id = agentId
     override def xcor = vars(VAR_XCOR).asInstanceOf[Double]
     override def ycor = vars(VAR_YCOR).asInstanceOf[Double]
@@ -125,7 +125,7 @@ abstract class FakeWorld(state: State) extends api.World {
     override val agents = (agentSeq.sortBy(l => (l.end1.id, l.end2.id)): Iterable[api.Agent]).asJava
   }
 
-  import Mirroring.WorldIsMirrorable.variableIndices._
+  import Mirroring.MirrorableWorld._
   private def worldVar[T](i: Int) = worldVars(i).asInstanceOf[T]
 
   def patchesWithLabels = worldVar[Int](wvPatchesWithLabels)

@@ -22,21 +22,21 @@ class TestMirroring extends FunSuite {
   }
 
   def checkAllAgents(ws: HeadlessWorkspace, state: State) {
-    def check[A <: api.Agent](agentSet: api.AgentSet)(implicit m: AgentIsMirrorable[A]) {
-      expect(agentSet.count) { state.count(_._1.kind == m.kind) }
+    def check[A <: api.Agent](agentSet: api.AgentSet, kind: Kind, toMirrorable: A => MirrorableAgent[A]) {
+      expect(agentSet.count) { state.count(_._1.kind == kind) }
       for (agent <- agentSet.agents.asScala) {
-        val overridesIndices = m.variableOverrides.keys.toSet
-        val mirrorVars = state(AgentKey(m.kind, agent.id))
-        val realVars = agent.variables.take(m.nbImplicitVariables) // this ignores the extra vars
+        val m = toMirrorable(agent.asInstanceOf[A])
+        val mirrorVars = state(AgentKey(kind, agent.id))
+        val realVars = agent.variables
         assert((mirrorVars zip realVars).zipWithIndex.forall {
           // for each pair, check if they're equal OR if they are overridden
-          case ((mv, rv), i) => mv == rv || overridesIndices.contains(i)
+          case ((mv, rv), i) => mv == rv || m.variables.keySet.contains(i)
         })
       }
     }
-    check[api.Patch](ws.world.patches)
-    check[api.Turtle](ws.world.turtles)
-    check[api.Link](ws.world.links)
+    check(ws.world.patches, Patch, (p: api.Patch) => new MirrorablePatch(p.asInstanceOf[api.Patch]))
+    check(ws.world.turtles, Turtle, (p: api.Turtle) => new MirrorableTurtle(p.asInstanceOf[api.Turtle]))
+    check(ws.world.links, Link, (p: api.Link) => new MirrorableLink(p.asInstanceOf[api.Link]))
   }
 
   test("init") {
@@ -152,7 +152,7 @@ class TestMirroring extends FunSuite {
       pico.addComponent(dummy)
       val renderer = pico.getComponent(classOf[api.RendererInterface])
       renderer.resetCache(ws.patchSize)
-      
+
       val realChecksum =
         Checksummer.calculateGraphicsChecksum(ws.renderer, ws)
       val mirrorChecksum =
@@ -177,7 +177,7 @@ class TestMirroring extends FunSuite {
   test("wolf") {
     modelRenderingTest("models/Sample Models/Biology/Wolf Sheep Predation.nlogo")
   }
-  
+
   test("fireworks") {
     modelRenderingTest("models/Sample Models/Art/Fireworks.nlogo")
   }
@@ -203,13 +203,13 @@ class TestMirroring extends FunSuite {
   test("fire") {
     modelRenderingTest("models/Sample Models/Earth Science/Fire.nlogo")
   }
-  
+
   test("Echo model for testing turtle labels") {
     modelRenderingTest("models/Sample Models/Biology/Evolution/Echo.nlogo")
   }
-  
+
   test("Color Chart Example for testing patch labels") {
     modelRenderingTest("models/Code Examples/Color Chart Example.nlogo")
   }
-  
+
 }
