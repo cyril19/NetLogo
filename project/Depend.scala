@@ -47,7 +47,7 @@ object Depend {
       "lab" -> List("nvm"),
       "lex" -> List("api"),
       "lite" -> List("window"),
-      "mirror" -> List("api"),
+      "mirror" -> List("api","workspace"),
       "nvm" -> List("agent"),
       "plot" -> List("api"),
       "prim" -> List("nvm"),
