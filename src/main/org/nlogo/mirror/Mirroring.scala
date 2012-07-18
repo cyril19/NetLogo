@@ -26,7 +26,7 @@ case class Update(deaths: Seq[Death], births: Seq[Birth], changes: Map[AgentKey,
 
 object Mirroring {
 
-  abstract class Mirrorable[+T](obj: T) {
+  abstract class Mirrorable {
     def nbVariables: Int
     def agentKey: AgentKey
     def kind: Kind
@@ -34,7 +34,7 @@ object Mirroring {
     def getVariable(index: Int) = variables(index)
   }
 
-  abstract class MirrorableAgent[T <: api.Agent](agent: T) extends Mirrorable(agent) {
+  abstract class MirrorableAgent[T <: api.Agent](agent: T) extends Mirrorable {
     override def getVariable(index: Int) = variables.getOrElse(index, agent.getVariable(index))
   }
 
@@ -90,7 +90,7 @@ object Mirroring {
       wvTrailDrawing
       ) = 0 until 16
   }
-  class MirrorableWorld(world: api.World) extends Mirrorable(world) {
+  class MirrorableWorld(world: api.World) extends Mirrorable {
     import MirrorableWorld._
     override def kind = World
     override def agentKey = AgentKey(kind, 0) // dummy id for the one and unique world
@@ -130,7 +130,7 @@ object Mirroring {
       ) = 0 until 5
   }
 
-  class MirrorablePlot(val p: plot.Plot, val ws: AbstractWorkspaceScala) extends Mirrorable(p) {
+  class MirrorablePlot(val p: plot.Plot, val ws: AbstractWorkspaceScala) extends Mirrorable {
     import MirrorablePlot._
     override def kind = Plot
     override def agentKey = AgentKey(kind, ws.plotManager.plots.indexOf(p))
@@ -154,7 +154,7 @@ object Mirroring {
       ppvPoints
       ) = 0 until 7
   }
-  class MirrorablePlotPen(val pen: plot.PlotPen, val ws: AbstractWorkspaceScala) extends Mirrorable(pen) {
+  class MirrorablePlotPen(val pen: plot.PlotPen, val ws: AbstractWorkspaceScala) extends Mirrorable {
     import MirrorablePlotPen._
     override def kind = PlotPen
     override def agentKey = {
@@ -174,7 +174,7 @@ object Mirroring {
       ppvX -> double2Double(pen.x),
       ppvPoints -> pen.points.toList)
   }
-
+  
   private def allMirrorables(workspace: AbstractWorkspaceScala) = {
     import collection.JavaConverters._
     val world: api.World = workspace.world
