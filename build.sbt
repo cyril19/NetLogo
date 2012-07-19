@@ -14,6 +14,12 @@ javacOptions ++=
   "-g -deprecation -encoding us-ascii -Werror -Xlint:all -Xlint:-serial -Xlint:-fallthrough -Xlint:-path -source 1.5 -target 1.5"
   .split(" ").toSeq
 
+// only log problems plz
+ivyLoggingLevel := UpdateLogging.Quiet
+
+// we're not cross-building for different Scala versions
+crossPaths := false
+
 scalaSource in Compile <<= baseDirectory(_ / "src" / "main")
 
 scalaSource in Test <<= baseDirectory(_ / "src" / "test")
@@ -42,6 +48,6 @@ libraryDependencies ++= Seq(
   "org.jmock" % "jmock" % "2.5.1" % "test",
   "org.jmock" % "jmock-legacy" % "2.5.1" % "test",
   "org.jmock" % "jmock-junit4" % "2.5.1" % "test",
-  "org.scalacheck" %% "scalacheck" % "1.9" % "test",
+  "org.scalacheck" %% "scalacheck" % "1.10.0" % "test",
   "org.scalatest" %% "scalatest" % "1.8" % "test"
 )
