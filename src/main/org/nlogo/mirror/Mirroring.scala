@@ -27,7 +27,7 @@ case class Update(deaths: Seq[Death], births: Seq[Birth], changes: Map[AgentKey,
 
 object Mirroring {
 
-  abstract class Mirrorable {
+  trait Mirrorable {
     def agentKey: AgentKey
     def kind: Kind
     val variables: Map[Int, AnyRef]
@@ -37,6 +37,7 @@ object Mirroring {
 
   abstract class MirrorableAgent[T <: api.Agent](agent: T) extends Mirrorable {
     override def getVariable(index: Int) = variables.getOrElse(index, agent.getVariable(index))
+    override def agentKey = AgentKey(kind, agent.id)
   }
 
   object MirrorableTurtle {
@@ -46,7 +47,6 @@ object Mirroring {
     import MirrorableTurtle._
     override def kind = Turtle
     override def nbVariables = api.AgentVariables.getImplicitTurtleVariables.size + 1
-    override def agentKey = AgentKey(kind, turtle.id)
     override val variables = Map(
       VAR_BREED -> turtle.getBreed.printName,
       tvLineThickness -> double2Double(turtle.lineThickness))
@@ -55,7 +55,6 @@ object Mirroring {
   class MirrorablePatch(patch: api.Patch) extends MirrorableAgent(patch) {
     override def kind = Patch
     override def nbVariables = api.AgentVariables.getImplicitPatchVariables.size
-    override def agentKey = AgentKey(kind, patch.id)
     override val variables = Map(
       VAR_PXCOR -> int2Integer(patch.pxcor),
       VAR_PYCOR -> int2Integer(patch.pycor))
@@ -64,7 +63,6 @@ object Mirroring {
   class MirrorableLink(link: api.Link) extends MirrorableAgent(link) {
     override def kind = Link
     override def nbVariables = api.AgentVariables.getImplicitLinkVariables.size
-    override def agentKey = AgentKey(kind, link.id)
     override val variables = Map(
       VAR_END1 -> long2Long(link.end1.id),
       VAR_END2 -> long2Long(link.end2.id),
