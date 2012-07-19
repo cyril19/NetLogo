@@ -5,7 +5,6 @@ import scala.collection.JavaConverters.iterableAsScalaIterableConverter
 import org.nlogo.api.AgentVariableNumbers._
 import org.nlogo.api
 import org.nlogo.plot
-import org.nlogo.workspace.AbstractWorkspaceScala
 
 sealed abstract class Kind
 case object Patch extends Kind
@@ -128,10 +127,10 @@ object Mirroring {
       ) = 0 until 5
   }
 
-  class MirrorablePlot(val p: plot.Plot, val ws: AbstractWorkspaceScala) extends Mirrorable {
+  class MirrorablePlot(val p: plot.Plot, val plots: List[plot.Plot]) extends Mirrorable {
     import MirrorablePlot._
     override def kind = Plot
-    override def agentKey = AgentKey(kind, ws.plotManager.plots.indexOf(p))
+    override def agentKey = AgentKey(kind, plots.indexOf(p))
     override val variables = Map(
       pvXMin -> double2Double(p.xMin),
       pvXMax -> double2Double(p.xMax),
@@ -151,13 +150,13 @@ object Mirroring {
       ppvPoints
       ) = 0 until 7
   }
-  class MirrorablePlotPen(val pen: plot.PlotPen, val ws: AbstractWorkspaceScala) extends Mirrorable {
+  class MirrorablePlotPen(val pen: plot.PlotPen, val plots: List[plot.Plot]) extends Mirrorable {
     import MirrorablePlotPen._
     override def kind = PlotPen
     override def agentKey = {
       // we combine the plot id and the pen id (which are both 
       // originally Ints) into a single Long:
-      val plotId: Long = ws.plotManager.plots.indexOf(pen.plot)
+      val plotId: Long = plots.indexOf(pen.plot)
       val penId: Long = pen.plot.pens.indexOf(pen)
       AgentKey(kind, (plotId << 32) | penId)
     }
@@ -181,18 +180,16 @@ object Mirroring {
         .toMap
   }
 
-  private def allMirrorables(workspace: AbstractWorkspaceScala) = {
+  private def allMirrorables(world: api.World, plots: List[plot.Plot]) = {
     import collection.JavaConverters._
-    val world: api.World = workspace.world
     val turtles = world.turtles.agents.asScala.map(t => new MirrorableTurtle(t.asInstanceOf[api.Turtle]))
     val patches = world.patches.agents.asScala.map(p => new MirrorablePatch(p.asInstanceOf[api.Patch]))
     val links = world.links.agents.asScala.map(l => new MirrorableLink(l.asInstanceOf[api.Link]))
     val worldIterable = Iterable(new MirrorableWorld(world))
     val interfaceGlobals = Iterable(new MirrorableInterfaceGlobals(world))
-    val plotList = workspace.plotManager.plots
-    val plots = for { p <- plotList } yield new MirrorablePlot(p, workspace)
-    val plotPens = for { p <- plotList; pp <- p.pens } yield new MirrorablePlotPen(pp, workspace)
-    (worldIterable ++ interfaceGlobals ++ turtles ++ patches ++ links ++ plots ++ plotPens)
+    val plotMirrorables = for { p <- plots } yield new MirrorablePlot(p, plots)
+    val plotPens = for { p <- plots; pp <- p.pens } yield new MirrorablePlotPen(pp, plots)
+    (worldIterable ++ interfaceGlobals ++ turtles ++ patches ++ links ++ plotMirrorables ++ plotPens)
   }
 
   type State = Map[AgentKey, Seq[AnyRef]]
@@ -201,13 +198,13 @@ object Mirroring {
     for (i <- was.indices if was(i) != now(i))
       yield Change(i, now(i))
 
-  def diffs(oldState: State, currentWorkspace: AbstractWorkspaceScala): (State, Update) = {
+  def diffs(oldState: State, world: api.World, plots: List[plot.Plot]): (State, Update) = {
     var births: Seq[Birth] = Vector()
     var deaths: Seq[Death] = Vector()
     var changes: Map[AgentKey, Seq[Change]] = Map()
     var newState: State = oldState
     var seen: Set[AgentKey] = Set()
-    for (obj <- allMirrorables(currentWorkspace)) {
+    for (obj <- allMirrorables(world, plots)) {
       val key = obj.agentKey
       seen += key
       val vars = (0 until obj.nbVariables).map(obj.getVariable)

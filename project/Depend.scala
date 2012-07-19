@@ -42,7 +42,7 @@ object Depend {
       "job" -> List("nvm"),
       "lab" -> List("nvm"),
       "lex" -> List("api"),
-      "mirror" -> List("api","workspace"),
+      "mirror" -> List("api","plot"),
       "nvm" -> List("agent"),
       "plot" -> List("api"),
       "prim" -> List("nvm"),
