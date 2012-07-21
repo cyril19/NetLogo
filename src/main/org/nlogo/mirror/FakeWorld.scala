@@ -5,7 +5,6 @@ import Mirrorables._
 import Mirroring.State
 import collection.JavaConverters._
 import api.AgentVariableNumbers._
-import scala.collection.breakOut
 
 abstract class FakeWorld(state: State) extends api.World {
 
