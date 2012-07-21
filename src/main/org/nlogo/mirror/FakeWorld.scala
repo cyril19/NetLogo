@@ -1,6 +1,7 @@
 package org.nlogo.mirror
 
 import org.nlogo.api
+import Mirrorables._
 import Mirroring.State
 import collection.JavaConverters._
 import api.AgentVariableNumbers._
@@ -15,9 +16,9 @@ abstract class FakeWorld(state: State) extends api.World {
         case (AgentKey(_, agentId), vars) => agentId -> vars
       }
     }
-    (groups(World).head._2, // world should always be there 
+    (groups(World).head._2, // world should always be there
       groups(Patch), // patches should always be there
-      groups.getOrElse(Turtle, Seq()), // there might be no turtles 
+      groups.getOrElse(Turtle, Seq()), // there might be no turtles
       groups.getOrElse(Link, Seq())) // there might be no links
   }
 
@@ -48,7 +49,7 @@ abstract class FakeWorld(state: State) extends api.World {
 
   class FakeTurtle(agentId: Long, val vars: Seq[AnyRef])
     extends api.Turtle with FakeAgent {
-    import Mirrorables.MirrorableTurtle._
+    import MirrorableTurtle._
     override def id = agentId
     override def xcor = vars(VAR_XCOR).asInstanceOf[Double]
     override def ycor = vars(VAR_YCOR).asInstanceOf[Double]
@@ -114,7 +115,7 @@ abstract class FakeWorld(state: State) extends api.World {
     // maybe I should keep a map from id to agent somewhere? Not sure it's worth it, though...
     override def end1 = turtles.agentSeq.find(_.id == vars(VAR_END1).asInstanceOf[Long]).get
     override def end2 = turtles.agentSeq.find(_.id == vars(VAR_END2).asInstanceOf[Long]).get
-    override def size: Double = 1 // TODO: world.protractor.distance(end1, end2, true) 
+    override def size: Double = 1 // TODO: world.protractor.distance(end1, end2, true)
     override def shape = vars(VAR_LSHAPE).asInstanceOf[String]
     override def toString = id + " link " + end1.id + " " + end2.id // TODO: get breed name in there
   }
@@ -125,7 +126,7 @@ abstract class FakeWorld(state: State) extends api.World {
     override val agents = (agentSeq.sortBy(l => (l.end1.id, l.end2.id)): Iterable[api.Agent]).asJava
   }
 
-  import Mirrorables.MirrorableWorld._
+  import MirrorableWorld._
   private def worldVar[T](i: Int) = worldVars(i).asInstanceOf[T]
 
   def patchesWithLabels = worldVar[Int](wvPatchesWithLabels)
@@ -143,7 +144,7 @@ abstract class FakeWorld(state: State) extends api.World {
   def patchesAllBlack = worldVar[Boolean](wvPatchesAllBlack)
 
   def trailDrawing = worldVar[Option[Array[Byte]]](wvTrailDrawing)
-  
+
   def program = new api.Program {
     private def makeBreeds[A <: FakeAgent: Manifest](
       breedWorldVar: Int, genericName: String,
@@ -165,7 +166,7 @@ abstract class FakeWorld(state: State) extends api.World {
   }
 
   def getPatch(i: Int): api.Patch = patches.agentSeq(i)
-  
+
   // unsupported
   def wrap(pos: Double, min: Double, max: Double): Double = unsupported
   def ticks: Double = unsupported
