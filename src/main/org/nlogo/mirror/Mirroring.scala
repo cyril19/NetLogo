@@ -24,15 +24,15 @@ case class Change(variable: Int, value: AnyRef)
 
 case class Update(deaths: Seq[Death], births: Seq[Birth], changes: Seq[(AgentKey, Array[Change])])
 
-object Mirroring {
+trait Mirrorable {
+  def agentKey: AgentKey
+  def kind: Kind
+  val variables: Map[Int, AnyRef]
+  def nbVariables = variables.size
+  def getVariable(index: Int) = variables(index)
+}
 
-  trait Mirrorable {
-    def agentKey: AgentKey
-    def kind: Kind
-    val variables: Map[Int, AnyRef]
-    def nbVariables = variables.size
-    def getVariable(index: Int) = variables(index)
-  }
+object Mirrorables {
 
   // so we don't fill up memory with duplicate AgentKey objects
   val keyCache = collection.mutable.WeakHashMap[api.Agent, AgentKey]()
@@ -183,7 +183,7 @@ object Mirroring {
         .toMap
   }
 
-  private def allMirrorables(world: api.World, plots: List[plot.Plot]) = {
+  def allMirrorables(world: api.World, plots: List[plot.Plot]): Iterable[Mirrorable] = {
     import collection.JavaConverters._
     val turtles = world.turtles.agents.asScala.map(t => new MirrorableTurtle(t.asInstanceOf[api.Turtle]))
     val patches = world.patches.agents.asScala.map(p => new MirrorablePatch(p.asInstanceOf[api.Patch]))
@@ -195,19 +195,25 @@ object Mirroring {
     (worldIterable ++ interfaceGlobals ++ turtles ++ patches ++ links ++ plotMirrorables ++ plotPens)
   }
 
+}
+
+// no dependencies on api package below here
+
+object Mirroring {
+
   type State = Map[AgentKey, Seq[AnyRef]]
 
   private def valueDiffs(was: Seq[AnyRef], now: Seq[AnyRef]): Seq[Change] =
     for (i <- was.indices if was(i) != now(i))
       yield Change(i, now(i))
 
-  def diffs(oldState: State, world: api.World, plots: List[plot.Plot]): (State, Update) = {
+  def diffs(oldState: State, mirrorables: TraversableOnce[Mirrorable]): (State, Update) = {
     var births: Seq[Birth] = Vector()
     var deaths: Seq[Death] = Vector()
     var changes: Map[AgentKey, Seq[Change]] = Map()
     var newState: State = oldState
     var seen: Set[AgentKey] = Set()
-    for (obj <- allMirrorables(world, plots)) {
+    for (obj <- mirrorables) {
       val key = obj.agentKey
       seen += key
       val vars = (0 until obj.nbVariables).map(obj.getVariable)
