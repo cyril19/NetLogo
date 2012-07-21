@@ -22,7 +22,7 @@ case class Birth(agent: AgentKey, values: Seq[AnyRef])
 case class Death(agent: AgentKey)
 case class Change(variable: Int, value: AnyRef)
 
-case class Update(deaths: Seq[Death], births: Seq[Birth], changes: Map[AgentKey, Seq[Change]])
+case class Update(deaths: Seq[Death], births: Seq[Birth], changes: Seq[(AgentKey, Array[Change])])
 
 object Mirroring {
 
@@ -157,7 +157,7 @@ object Mirroring {
     import MirrorablePlotPen._
     override def kind = PlotPen
     override def agentKey = {
-      // we combine the plot id and the pen id (which are both 
+      // we combine the plot id and the pen id (which are both
       // originally Ints) into a single Long:
       val plotId: Long = plots.indexOf(pen.plot)
       val penId: Long = pen.plot.pens.indexOf(pen)
@@ -227,7 +227,7 @@ object Mirroring {
         deaths :+= Death(key)
         newState -= key
       }
-    (newState, Update(deaths, births, changes))
+    (newState, Update(deaths, births, changes.mapValues(_.toArray).toSeq))
   }
   def merge(oldState: State, update: Update): State = {
     var newState: State = oldState
@@ -239,7 +239,7 @@ object Mirroring {
       newState += agent -> mergeValues(oldState(agent), changes)
     newState
   }
-  private def mergeValues(oldValues: Seq[AnyRef], changes: Seq[Change]): Seq[AnyRef] = {
+  private def mergeValues(oldValues: Seq[AnyRef], changes: Array[Change]): Seq[AnyRef] = {
     val newValues = oldValues.toArray
     for (Change(variable, value) <- changes)
       newValues(variable) = value
