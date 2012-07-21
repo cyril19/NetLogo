@@ -159,6 +159,7 @@ class TestMirroring extends FunSuite {
         Checksummer.calculateGraphicsChecksum(renderer, ws)
 
       def exportPNG(r: api.RendererInterface, suffix: String) = {
+        new java.io.File("tmp").mkdir()
         val outputFile = new java.io.File(path).getName + "." + suffix + ".png"
         val outputPath = new java.io.File("tmp/" + outputFile)
         javax.imageio.ImageIO.write(r.exportView(ws), "png", outputPath)
