@@ -6,7 +6,7 @@ import Mirroring.State
 import collection.JavaConverters._
 import api.AgentVariableNumbers._
 
-abstract class FakeWorld(state: State) extends api.World {
+class FakeWorld(state: State) extends api.World {
 
   private val (worldVars, patchStates, turtleStates, linkStates) = {
     // each group will be a seq of (agentId, vars):
@@ -26,9 +26,8 @@ abstract class FakeWorld(state: State) extends api.World {
       .map(patch => api.Color.getRGBInt(patch.pcolor))
       .toArray
 
-  class FakeAgentSet[A <: api.Agent: Manifest](val agentSeq: Seq[A])
+  class FakeAgentSet[A <: api.Agent: Manifest](val kind: api.AgentKind, val agentSeq: Seq[A], val isDirected: Boolean = false, val isUndirected: Boolean = false)
     extends api.AgentSet {
-    val `type` = classManifest[A].erasure.asInstanceOf[Class[api.Agent]]
     def count = agentSeq.size
     def world: api.World = FakeWorld.this
     def equalAgentSets(other: api.AgentSet) = unsupported
@@ -49,6 +48,7 @@ abstract class FakeWorld(state: State) extends api.World {
   class FakeTurtle(agentId: Long, val vars: Seq[AnyRef])
     extends api.Turtle with FakeAgent {
     import MirrorableTurtle._
+    override def kind = api.AgentKind.Turtle
     override def id = agentId
     override def xcor = vars(VAR_XCOR).asInstanceOf[Double]
     override def ycor = vars(VAR_YCOR).asInstanceOf[Double]
@@ -59,7 +59,7 @@ abstract class FakeWorld(state: State) extends api.World {
     override def labelString = org.nlogo.api.Dump.logoObject(vars(VAR_LABEL))
     override def hasLabel = labelString.nonEmpty
     override def labelColor = vars(VAR_LABELCOLOR)
-    override def getBreed = Option(program.breeds.get(vars(VAR_BREED))).getOrElse(turtles).asInstanceOf[api.AgentSet]
+    override def getBreed = turtles
     override def size = vars(VAR_SIZE).asInstanceOf[Double]
     override def shape = vars(VAR_SHAPE).asInstanceOf[String]
     override def getBreedIndex = unsupported
@@ -69,12 +69,13 @@ abstract class FakeWorld(state: State) extends api.World {
   }
 
   override val turtles =
-    new FakeAgentSet(turtleStates.map {
+    new FakeAgentSet(api.AgentKind.Turtle, turtleStates.map {
       case (id, vars) => new FakeTurtle(id, vars)
     }.sortBy(_.id))
 
   class FakePatch(agentId: Long, val vars: Seq[AnyRef])
     extends api.Patch with FakeAgent {
+    override def kind = api.AgentKind.Patch
     override def id = agentId
     override def pxcor = vars(VAR_PXCOR).asInstanceOf[Int]
     override def pycor = vars(VAR_PYCOR).asInstanceOf[Int]
@@ -88,12 +89,13 @@ abstract class FakeWorld(state: State) extends api.World {
   }
 
   override val patches =
-    new FakeAgentSet(patchStates.map {
+    new FakeAgentSet(api.AgentKind.Patch, patchStates.map {
       case (id, vars) => new FakePatch(id, vars)
     }.sortBy(_.id))
 
   class FakeLink(agentId: Long, val vars: Seq[AnyRef]) extends api.Link with FakeAgent {
     override def id = agentId
+    override def kind = api.AgentKind.Link
     override def getBreedIndex: Int = unsupported
     override def labelColor: AnyRef = vars(VAR_LLABELCOLOR)
     override def labelString: String = org.nlogo.api.Dump.logoObject(vars(VAR_LLABEL))
@@ -110,7 +112,7 @@ abstract class FakeWorld(state: State) extends api.World {
     override def y2: Double = end2.ycor
     override def midpointY: Double = unsupported
     override def midpointX: Double = unsupported
-    override def getBreed: api.AgentSet = Option(program.linkBreeds.get(vars(VAR_LBREED))).getOrElse(links).asInstanceOf[api.AgentSet]
+    override def getBreed: api.AgentSet = links
     // maybe I should keep a map from id to agent somewhere? Not sure it's worth it, though...
     override def end1 = turtles.agentSeq.find(_.id == vars(VAR_END1).asInstanceOf[Long]).get
     override def end2 = turtles.agentSeq.find(_.id == vars(VAR_END2).asInstanceOf[Long]).get
@@ -119,7 +121,7 @@ abstract class FakeWorld(state: State) extends api.World {
     override def toString = id + " link " + end1.id + " " + end2.id // TODO: get breed name in there
   }
 
-  override val links = new FakeAgentSet(linkStates.map {
+  override val links = new FakeAgentSet(api.AgentKind.Link, linkStates.map {
     case (id, vars) => new FakeLink(id, vars)
   }.sortBy(_.id)) {
     override val agents = (agentSeq.sortBy(l => (l.end1.id, l.end2.id)): Iterable[api.Agent]).asJava
@@ -144,25 +146,29 @@ abstract class FakeWorld(state: State) extends api.World {
 
   def trailDrawing = worldVar[Option[Array[Byte]]](wvTrailDrawing)
 
-  def program = new api.Program {
-    private def makeBreeds[A <: FakeAgent: Manifest](
-      breedWorldVar: Int, genericName: String,
-      agentSet: FakeAgentSet[A]): java.util.Map[String, AnyRef] = {
-      val nameToAgentSet = { breedName: String =>
-        val agentSeq = agentSet.agentSeq.filter(_.vars(VAR_BREED) == breedName)
-        breedName -> new FakeAgentSet[A](agentSeq).asInstanceOf[AnyRef]
-      }
-      val breedSeq = worldVar[Seq[String]](breedWorldVar).map(nameToAgentSet)
-      val breeds = new java.util.LinkedHashMap[String, AnyRef]
-      for ((breedName, agentSet) <- breedSeq)
-        breeds.put(breedName, agentSet)
-      breeds
-    }
-
-    override val breeds = makeBreeds(wvTurtleBreeds, "TURTLES", turtles)
-    override val linkBreeds = makeBreeds(wvLinkBreeds, "LINKS", links)
-    override def dump: java.lang.String = unsupported
+  def program = {
+    def toListMap[K, V](m: Seq[(K, V)]) =
+      collection.immutable.ListMap(m: _*)
+    api.Program.empty.copy(
+      breeds = toListMap(worldVar[Seq[String]](wvTurtleBreeds).map{name =>
+        name -> api.Breed(name, "TURTLE")}),
+      linkBreeds = toListMap(worldVar[Seq[String]](wvLinkBreeds).map{name =>
+        name -> api.Breed(name, "LINK")}))
   }
+
+  private def makeBreeds[A <: FakeAgent: Manifest](breedWorldVar: Int, agentSet: FakeAgentSet[A]): Map[String, FakeAgentSet[_]] = {
+    val nameToAgentSet = { breedName: String =>
+      val agentSeq = agentSet.agentSeq.filter(_.vars(VAR_BREED) == breedName)
+      breedName -> new FakeAgentSet[A](agentSet.kind, agentSeq)
+    }
+    worldVar[Seq[String]](breedWorldVar).map(nameToAgentSet).toMap
+  }
+
+  private val turtleBreeds = makeBreeds(MirrorableWorld.wvTurtleBreeds, turtles)
+  private val linkBreeds = makeBreeds(MirrorableWorld.wvLinkBreeds, links)
+
+  override def getBreed(name: String) = turtleBreeds(name)
+  override def getLinkBreed(name: String) = linkBreeds(name)
 
   def getPatch(i: Int): api.Patch = patches.agentSeq(i)
 

@@ -147,7 +147,7 @@ class TestMirroring extends FunSuite {
       val (m0, u0) = diffs(Map(), mirrorables())
       var state = Mirroring.merge(Map(), u0)
       // should I test that m0 and state are identical? maybe have a separate test for that
-      val dummy = new FakeWorld(state) {}
+      val dummy = new FakeWorld(state)
       val pico = new Pico
       pico.add("org.nlogo.render.Renderer")
       pico.addComponent(dummy)
