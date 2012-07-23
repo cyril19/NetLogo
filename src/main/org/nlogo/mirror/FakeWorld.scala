@@ -149,25 +149,22 @@ class FakeWorld(state: State) extends api.World {
   def trailDrawing = worldVar[Option[Array[Byte]]](wvTrailDrawing)
 
   def program = {
-    def toListMap[K, V](m: Seq[(K, V)]) =
-      collection.immutable.ListMap(m: _*)
+    type BreedMap = collection.immutable.ListMap[String, api.Breed]
     api.Program.empty.copy(
-      breeds = toListMap(worldVar[Seq[String]](wvTurtleBreeds).map{name =>
-        name -> api.Breed(name, "TURTLE")}),
-      linkBreeds = toListMap(worldVar[Seq[String]](wvLinkBreeds).map{name =>
-        name -> api.Breed(name, "LINK")}))
+      breeds = worldVar[BreedMap](wvTurtleBreeds),
+      linkBreeds = worldVar[BreedMap](wvLinkBreeds))
   }
 
-  private def makeBreeds[A <: FakeAgent](breedWorldVar: Int, agentSet: FakeAgentSet[A]): Map[String, FakeAgentSet[_]] = {
+  private def makeBreeds[A <: FakeAgent](breedNames: Iterable[String], agentSet: FakeAgentSet[A]): Map[String, FakeAgentSet[_]] = {
     val nameToAgentSet = { breedName: String =>
       val agentSeq = agentSet.agentSeq.filter(_.vars(VAR_BREED) == breedName)
       breedName -> new FakeAgentSet[A](agentSet.kind, agentSeq)
     }
-    worldVar[Seq[String]](breedWorldVar).map(nameToAgentSet).toMap
+    breedNames.map(nameToAgentSet).toMap
   }
 
-  private val turtleBreeds = makeBreeds(MirrorableWorld.wvTurtleBreeds, turtles)
-  private val linkBreeds = makeBreeds(MirrorableWorld.wvLinkBreeds, links)
+  private val turtleBreeds = makeBreeds(program.breeds.keys, turtles)
+  private val linkBreeds = makeBreeds(program.linkBreeds.keys, links)
 
   override def getBreed(name: String) = turtleBreeds(name)
   override def getLinkBreed(name: String) = linkBreeds(name)
