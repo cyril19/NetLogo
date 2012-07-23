@@ -28,7 +28,7 @@ class FakeWorld(state: State) extends api.World {
       .map(patch => api.Color.getRGBInt(patch.pcolor))
       .toArray
 
-  class FakeAgentSet[A <: api.Agent: Manifest](val kind: api.AgentKind, val agentSeq: Seq[A], val isDirected: Boolean = false, val isUndirected: Boolean = false)
+  class FakeAgentSet[A <: api.Agent](val kind: api.AgentKind, val agentSeq: Seq[A], val isDirected: Boolean = false, val isUndirected: Boolean = false)
     extends api.AgentSet {
     def count = agentSeq.size
     def world: api.World = FakeWorld.this
@@ -158,7 +158,7 @@ class FakeWorld(state: State) extends api.World {
         name -> api.Breed(name, "LINK")}))
   }
 
-  private def makeBreeds[A <: FakeAgent: Manifest](breedWorldVar: Int, agentSet: FakeAgentSet[A]): Map[String, FakeAgentSet[_]] = {
+  private def makeBreeds[A <: FakeAgent](breedWorldVar: Int, agentSet: FakeAgentSet[A]): Map[String, FakeAgentSet[_]] = {
     val nameToAgentSet = { breedName: String =>
       val agentSeq = agentSet.agentSeq.filter(_.vars(VAR_BREED) == breedName)
       breedName -> new FakeAgentSet[A](agentSet.kind, agentSeq)
