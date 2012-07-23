@@ -92,8 +92,8 @@ object Mirrorables {
       wvWrappingAllowedInX -> boolean2Boolean(world.wrappingAllowedInX),
       wvWrappingAllowedInY -> boolean2Boolean(world.wrappingAllowedInY),
       wvPatchesAllBlack -> boolean2Boolean(world.patchesAllBlack),
-      wvTurtleBreeds -> world.program.breeds.keySet.asScala.toSeq,
-      wvLinkBreeds -> world.program.linkBreeds.keySet.asScala.toSeq,
+      wvTurtleBreeds -> world.program.breeds.keys.toSeq,
+      wvLinkBreeds -> world.program.linkBreeds.keys.toSeq,
       wvTrailDrawing ->
         (if (world.trailDrawer.isDirty) {
           val outputStream = new java.io.ByteArrayOutputStream
@@ -161,7 +161,7 @@ object Mirrorables {
     def agentKey = AgentKey(kind, 0)
     val variables =
       world.program.interfaceGlobals
-        .asScala.zipWithIndex
+        .zipWithIndex
         .map { case (name, i) => i -> (name, world.observer.getVariable(i)) }
         .toMap
   }
