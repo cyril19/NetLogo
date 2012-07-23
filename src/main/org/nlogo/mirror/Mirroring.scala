@@ -1,3 +1,5 @@
+// (C) Uri Wilensky. https://github.com/NetLogo/NetLogo
+
 package org.nlogo.mirror
 
 // no dependencies except Scala standard library
@@ -7,7 +9,9 @@ case class AgentKey(kind: Kind, id: Long)
 case class Birth(agent: AgentKey, values: Seq[AnyRef])
 case class Death(agent: AgentKey)
 case class Change(variable: Int, value: AnyRef)
-case class Update(deaths: Seq[Death], births: Seq[Birth], changes: Seq[(AgentKey, Array[Change])])
+case class Update(deaths: Seq[Death] = Seq(),
+                  births: Seq[Birth] = Seq(),
+                  changes: Seq[(AgentKey, Seq[Change])] = Seq())
 
 trait Mirrorable {
   def agentKey: AgentKey
@@ -51,7 +55,7 @@ object Mirroring {
         deaths :+= Death(key)
         newState -= key
       }
-    (newState, Update(deaths, births, changes.mapValues(_.toArray).toSeq))
+    (newState, Update(deaths, births, changes.toSeq))
   }
 
   def merge(oldState: State, update: Update): State = {
@@ -65,7 +69,7 @@ object Mirroring {
     newState
   }
 
-  private def mergeValues(oldValues: Seq[AnyRef], changes: Array[Change]): Seq[AnyRef] = {
+  private def mergeValues(oldValues: Seq[AnyRef], changes: Seq[Change]): Seq[AnyRef] = {
     val newValues = oldValues.toArray
     for (Change(variable, value) <- changes)
       newValues(variable) = value
