@@ -76,7 +76,7 @@ libraryDependencies ++= Seq(
   "org.jmock" % "jmock-legacy" % "2.5.1" % "test",
   "org.jmock" % "jmock-junit4" % "2.5.1" % "test",
   "org.scalacheck" %% "scalacheck" % "1.10.0" % "test",
-  "org.scalatest" %% "scalatest" % "1.8" % "test"
+  "org.scalatest" %% "scalatest" % "2.0.M2" % "test"
 )
 
 all <<= (baseDirectory, streams) map { (base, s) =>
