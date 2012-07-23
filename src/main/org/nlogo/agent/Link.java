@@ -3,6 +3,8 @@
 package org.nlogo.agent;
 
 import org.nlogo.api.AgentException;
+import org.nlogo.api.AgentKind;
+import org.nlogo.api.AgentKindJ;
 import org.nlogo.api.AgentVariableNumbers;
 import org.nlogo.api.AgentVariables;
 import org.nlogo.api.Color;
@@ -16,6 +18,8 @@ import java.util.Iterator;
 public strictfp class Link
     extends Agent
     implements org.nlogo.api.Link {
+
+  public AgentKind kind() { return AgentKindJ.Link(); }
 
   /// ends
 
@@ -242,7 +246,7 @@ public strictfp class Link
           } else if (value instanceof LogoList) {
             color((LogoList) value);
           } else {
-            wrongTypeForVariable(AgentVariables.getImplicitLinkVariables()[vn],
+            wrongTypeForVariable(AgentVariables.getImplicitLinkVariables().apply(vn),
                 Double.class, value);
           }
           break;
@@ -255,7 +259,7 @@ public strictfp class Link
           } else if (value instanceof LogoList) {
             labelColor((LogoList) value);
           } else {
-            wrongTypeForVariable(AgentVariables.getImplicitLinkVariables()[vn],
+            wrongTypeForVariable(AgentVariables.getImplicitLinkVariables().apply(vn),
                 Double.class, value);
           }
           break;
@@ -263,7 +267,7 @@ public strictfp class Link
           if (value instanceof Boolean) {
             hidden(((Boolean) value).booleanValue());
           } else {
-            wrongTypeForVariable(AgentVariables.getImplicitLinkVariables()[vn],
+            wrongTypeForVariable(AgentVariables.getImplicitLinkVariables().apply(vn),
                 Boolean.class, value);
           }
           break;
@@ -285,7 +289,7 @@ public strictfp class Link
             }
             setBreed(breed);
           } else {
-            wrongTypeForVariable(AgentVariables.getImplicitLinkVariables()[vn],
+            wrongTypeForVariable(AgentVariables.getImplicitLinkVariables().apply(vn),
                 AgentSet.class, value);
           }
           break;
@@ -293,7 +297,7 @@ public strictfp class Link
           if (value instanceof Double) {
             lineThickness((Double) value);
           } else {
-            wrongTypeForVariable(AgentVariables.getImplicitLinkVariables()[vn],
+            wrongTypeForVariable(AgentVariables.getImplicitLinkVariables().apply(vn),
                 Double.class, value);
           }
           break;
@@ -305,7 +309,7 @@ public strictfp class Link
             }
             shape(newShape);
           } else {
-            wrongTypeForVariable(AgentVariables.getImplicitLinkVariables()[vn],
+            wrongTypeForVariable(AgentVariables.getImplicitLinkVariables().apply(vn),
                 String.class, value);
           }
           break;
@@ -313,7 +317,7 @@ public strictfp class Link
           if (value instanceof String) {
             mode((String) value);
           } else {
-            wrongTypeForVariable(AgentVariables.getImplicitLinkVariables()[vn],
+            wrongTypeForVariable(AgentVariables.getImplicitLinkVariables().apply(vn),
                 String.class, value);
           }
           break;
@@ -529,7 +533,7 @@ public strictfp class Link
   }
 
   public AgentSet bothEnds() {
-    AgentSet bothEnds = new ArrayAgentSet(Turtle.class, 2, false, world);
+    AgentSet bothEnds = new ArrayAgentSet(AgentKindJ.Turtle(), 2, false, world);
     bothEnds.add(end1);
     bothEnds.add(end2);
     return bothEnds;
@@ -596,11 +600,6 @@ public strictfp class Link
     return world.getLinkBreedSingular(getBreed()).toLowerCase();
   }
 
-  @Override
-  public Class<Link> getAgentClass() {
-    return Link.class;
-  }
-
   public static final int BIT = 8;
 
   @Override
@@ -635,8 +634,10 @@ public strictfp class Link
       return 0;
     }
     int j = 1;
-    for (Iterator<Object> iter = world.program().linkBreeds().values().iterator(); iter.hasNext();) {
-      if (mybreed == ((AgentSet) iter.next())) {
+    scala.collection.Iterator<String> iter =
+      world.program().linkBreeds().keys().iterator();
+    while(iter.hasNext()) {
+      if (world.linkBreedAgents.get(iter.next()) == mybreed) {
         return j;
       }
       j++;

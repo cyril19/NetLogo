@@ -3,6 +3,8 @@
 package org.nlogo.agent;
 
 import org.nlogo.api.AgentException;
+import org.nlogo.api.AgentKind;
+import org.nlogo.api.AgentKindJ;
 import org.nlogo.api.LogoException;
 import org.nlogo.api.Perspective;
 import org.nlogo.api.PerspectiveJ;
@@ -16,6 +18,8 @@ public strictfp class Observer
     resetPerspective();
   }
 
+  public AgentKind kind() { return AgentKindJ.Observer(); }
+
   @Override
   Agent realloc(boolean forRecompile) {
     Object[] oldvars = variables;
@@ -26,8 +30,8 @@ public strictfp class Observer
       newcons[i] = null;
     }
     if (oldvars != null && forRecompile) {
-      for (int i = 0; i < oldvars.length && i < world.oldGlobals.size(); i++) {
-        String name = world.oldGlobals.get(i);
+      for (int i = 0; i < oldvars.length && i < world.oldProgram.globals().size(); i++) {
+        String name = world.oldProgram.globals().apply(i);
         int newpos = world.observerOwnsIndexOf(name);
         if (newpos != -1) {
           newvars[newpos] = oldvars[i];
@@ -361,11 +365,6 @@ public strictfp class Observer
   @Override
   public String classDisplayName() {
     return "observer";
-  }
-
-  @Override
-  public Class<Observer> getAgentClass() {
-    return Observer.class;
   }
 
   public static final int BIT = 1;

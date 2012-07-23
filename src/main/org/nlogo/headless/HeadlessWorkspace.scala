@@ -7,9 +7,9 @@ package org.nlogo.headless
 // here and document it here.  The overriding method can simply call super(). - ST 6/1/05, 7/28/11
 
 import org.nlogo.agent.{ Agent, Observer }
-import org.nlogo.api.{ Version, RendererInterface, WorldDimensions,
+import org.nlogo.api.{ AgentKind, Program, Version, RendererInterface, WorldDimensions,
                        ModelReader, CompilerException, LogoException, SimpleJobOwner,
-                       CommandRunnable, ReporterRunnable }
+                       CommandRunnable, ReporterRunnable, UpdateMode }
 import org.nlogo.agent.World
 import org.nlogo.nvm.{ LabInterface,
                        Workspace, DefaultCompilerServices, CompilerInterface }
@@ -99,7 +99,7 @@ with org.nlogo.api.ViewSettings {
 
   world.trailDrawer(renderer.trailDrawer)
   val defaultOwner =
-    new SimpleJobOwner("HeadlessWorkspace", world.mainRNG, classOf[Observer])
+    new SimpleJobOwner("HeadlessWorkspace", world.mainRNG)
 
   /**
    * Has a model been opened in this workspace?
@@ -171,7 +171,7 @@ with org.nlogo.api.ViewSettings {
     world.createPatches(d)
     import collection.JavaConverters._
     val results = compiler.compileProgram(
-      source, world.newProgram(List[String]().asJava),
+      source, Program.empty(),
       getExtensionManager)
     setProcedures(results.proceduresMap)
     codeBits.clear()
@@ -264,7 +264,7 @@ with org.nlogo.api.ViewSettings {
   override def renderPerspective = true
   override def viewOffsetX = world.observer.followOffsetX
   override def viewOffsetY = world.observer.followOffsetY
-  override def updateMode(updateMode: Workspace.UpdateMode) { }
+  override def updateMode(updateMode: UpdateMode) { }
   override def setSize(x: Int, y: Int) { }
   override def clearTurtles() {
     if (!compilerTestingMode)
@@ -274,7 +274,7 @@ with org.nlogo.api.ViewSettings {
     if (!silent)
       println(agent)
   }
-  def inspectAgent(agentClass: Class[_ <: Agent], agent: org.nlogo.agent.Agent, radius: Double) {
+  def inspectAgent(kind: AgentKind, agent: org.nlogo.agent.Agent, radius: Double) {
     if (!silent) {
       println(agent)
     }
@@ -338,7 +338,7 @@ with org.nlogo.api.ViewSettings {
   /// world importing error handling
 
   var importerErrorHandler =
-    new org.nlogo.agent.Importer.ErrorHandler {
+    new org.nlogo.agent.ImporterJ.ErrorHandler {
       override def showError(title: String, errorDetails: String, fatalError: Boolean) = {
         System.err.println(
           "got a " + (if (fatalError) "" else "non") +

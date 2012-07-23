@@ -21,7 +21,7 @@ trait AgentSet {
   def count: Int
 
   /** Returns the type of agents in the AgentSet. */
-  def `type`: Class[_ <: Agent]
+  def kind: AgentKind
 
   /** Returns the world object that this AgentSet is associated with. */
   def world: World
@@ -35,5 +35,19 @@ trait AgentSet {
    * @param other the AgentSet to compare to
    */
   def equalAgentSets(other: AgentSet): Boolean
+
+  /**
+   * Reports true if this is the breed agentset for a directed link breed
+   *
+   * @param other the AgentSet to compare to
+   */
+  def isDirected: Boolean
+
+  /**
+   * Reports true if this is the breed agentset for an undirected link breed
+   *
+   * @param other the AgentSet to compare to
+   */
+  def isUndirected: Boolean
 
 }

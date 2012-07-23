@@ -4,6 +4,7 @@ import Keys._
 object Packaging {
 
   val settings = Seq(
+    artifactName := { (_, _, _) => "NetLogo.jar" },
     packageOptions <+= dependencyClasspath in Runtime map {
       classpath =>
         Package.ManifestAttributes((
@@ -11,12 +12,17 @@ object Packaging {
             .map(f => "lib/" + f.getName)
             .filter(_.endsWith(".jar"))
             .mkString(" ")))},
-    packageBin in Compile <<=
-      (packageBin in Compile, baseDirectory) map {
-        (jar, base) =>
-          IO.copyFile(jar, base / "NetLogo.jar")
-          jar },
-    artifactName := { (_, _, _) => "NetLogo.jar" }
+    packageBin in Compile <<= (packageBin in Compile, baseDirectory, cacheDirectory) map {
+      (jar, base, cacheDir) =>
+        val cache =
+          FileFunction.cached(cacheDir / "NetLogo-jar", inStyle = FilesInfo.hash, outStyle = FilesInfo.hash) {
+            in: Set[File] =>
+              IO.copyFile(jar, base / "NetLogo.jar")
+              Set(base / "NetLogo.jar")
+          }
+        cache(Set(jar))
+        jar
+      }
   )
 
 }

@@ -3,6 +3,8 @@
 package org.nlogo.agent;
 
 import org.nlogo.api.AgentException;
+import org.nlogo.api.AgentKind;
+import org.nlogo.api.AgentKindJ;
 import org.nlogo.api.Color;
 import org.nlogo.api.CompilerServices;
 import org.nlogo.api.ImporterUser;
@@ -11,19 +13,18 @@ import org.nlogo.api.Nobody$;
 import org.nlogo.api.Program;
 import org.nlogo.api.Shape;
 import org.nlogo.api.ShapeList;
+import org.nlogo.api.Timer;
 import org.nlogo.api.TrailDrawerInterface;
 import org.nlogo.api.ValueConstraint;
 import org.nlogo.api.WorldDimensionException;
 import org.nlogo.api.WorldDimensions;
 import org.nlogo.util.MersenneTwisterFast;
 
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
-import java.util.Iterator;
-import java.util.LinkedHashMap;
-import java.util.List;
 import java.util.Map;
+
+import scala.collection.Seq;
 
 // A note on wrapping: normally whether x and y coordinates wrap is a
 // product of the topology.  But we also have the old "-nowrap" primitives
@@ -87,7 +88,7 @@ public strictfp class World
     _linkShapeList = new ShapeList();
 
     _observer = createObserver();
-    _observers = new ArrayAgentSet(Observer.class, 1, "observers", false, this);
+    _observers = new ArrayAgentSet(AgentKindJ.Observer(), 1, "observers", false, this);
 
     linkManager = new LinkManager(this);
     tieManager = new TieManager(this, linkManager);
@@ -112,9 +113,12 @@ public strictfp class World
 
   /// empty agentsets
 
-  private final AgentSet _noTurtles = new ArrayAgentSet(Turtle.class, 0, false, this);
-  private final AgentSet _noPatches = new ArrayAgentSet(Patch.class, 0, false, this);
-  private final AgentSet _noLinks = new ArrayAgentSet(Link.class, 0, false, this);
+  private final AgentSet _noTurtles =
+    new ArrayAgentSet(AgentKindJ.Turtle(), 0, false, this);
+  private final AgentSet _noPatches =
+    new ArrayAgentSet(AgentKindJ.Patch(), 0, false, this);
+  private final AgentSet _noLinks =
+    new ArrayAgentSet(AgentKindJ.Link(), 0, false, this);
 
   public AgentSet noTurtles() {
     return _noTurtles;
@@ -127,6 +131,15 @@ public strictfp class World
   public AgentSet noLinks() {
     return _noLinks;
   }
+
+  /// breeds
+
+  // careful, these are HashMap not LinkedHashMap, order is arbitrary.
+  // if order matters just look up, don't traverse. - ST 7/13/12
+  public java.util.Map<String, AgentSet> breedAgents =
+    new java.util.HashMap<String, AgentSet>();
+  public java.util.Map<String, AgentSet> linkBreedAgents =
+    new java.util.HashMap<String, AgentSet>();
 
   ///
 
@@ -197,8 +210,8 @@ public strictfp class World
     new Exporter(this, writer).exportWorld(full);
   }
 
-  public void importWorld(Importer.ErrorHandler errorHandler, ImporterUser importerUser,
-                          Importer.StringReader stringReader, java.io.BufferedReader reader)
+  public void importWorld(ImporterJ.ErrorHandler errorHandler, ImporterUser importerUser,
+                          ImporterJ.StringReader stringReader, java.io.BufferedReader reader)
       throws java.io.IOException {
     new Importer(errorHandler, this,
         importerUser, stringReader).importWorld(reader);
@@ -422,18 +435,18 @@ public strictfp class World
     return _links;
   }
 
-  public AgentSet agentClassToAgentSet(Class<? extends Agent> agentClass) {
-    if (agentClass == Turtle.class) {
+  public AgentSet kindToAgentSet(AgentKind kind) {
+    if (kind == AgentKindJ.Turtle()) {
       return _turtles;
-    } else if (agentClass == Patch.class) {
+    } else if (kind == AgentKindJ.Patch()) {
       return _patches;
-    } else if (agentClass == Observer.class) {
+    } else if (kind == AgentKindJ.Observer()) {
       return _observers;
-    } else if (agentClass == Link.class) {
+    } else if (kind == AgentKindJ.Link()) {
       return _links;
     }
-    throw new IllegalArgumentException
-        ("agentClass = " + agentClass);
+    throw new IllegalArgumentException(
+      "kind = " + kind);
   }
 
   public WorldDimensions getDimensions() {
@@ -706,20 +719,15 @@ public strictfp class World
     _maxPxcorBoxed = Double.valueOf(_maxPxcor);
     _maxPycorBoxed = Double.valueOf(_maxPycor);
 
-    if (_program.breeds() != null) {
-      for (Iterator<Object> iter = _program.breeds().values().iterator();
-           iter.hasNext();) {
-        ((AgentSet) iter.next()).clear();
-      }
+    for(AgentSet agents : breedAgents.values()) {
+        agents.clear();
     }
-    if (_program.linkBreeds() != null) {
-      for (Iterator<Object> iter = _program.linkBreeds().values().iterator();
-           iter.hasNext();) {
-        ((AgentSet) iter.next()).clear();
-      }
+    for(AgentSet agents : linkBreedAgents.values()) {
+        agents.clear();
     }
-    _turtles = new TreeAgentSet(Turtle.class, "TURTLES", this);
-    _links = new TreeAgentSet(Link.class, "LINKS", this);
+
+    _turtles = new TreeAgentSet(AgentKindJ.Turtle(), "TURTLES", this);
+    _links = new TreeAgentSet(AgentKindJ.Link(), "LINKS", this);
 
     int x = minPxcor;
     int y = maxPycor;
@@ -741,7 +749,7 @@ public strictfp class World
       }
       patchArray[i] = patch;
     }
-    _patches = new ArrayAgentSet(Patch.class, patchArray, "patches", this);
+    _patches = new ArrayAgentSet(AgentKindJ.Patch(), patchArray, "patches", this);
     patchesWithLabels = 0;
     patchesAllBlack = true;
     mayHavePartiallyTransparentObjects = false;
@@ -810,11 +818,8 @@ public strictfp class World
   }
 
   public void clearTurtles() {
-    if (_program.breeds() != null) {
-      for (Iterator<Object> iter = _program.breeds().values().iterator();
-           iter.hasNext();) {
-        ((AgentSet) iter.next()).clear();
-      }
+    for(AgentSet agents : breedAgents.values()) {
+        agents.clear();
     }
     for (AgentSet.Iterator iter = _turtles.iterator(); iter.hasNext();) {
       Turtle turtle = (Turtle) iter.next();
@@ -830,12 +835,8 @@ public strictfp class World
   }
 
   public void clearLinks() {
-    if (_program.linkBreeds() != null) {
-      for (Iterator<Object> iter = _program.linkBreeds().values().iterator();
-           iter.hasNext();) {
-        AgentSet set = ((AgentSet) iter.next());
-        set.clear();
-      }
+    for(AgentSet agents : linkBreedAgents.values()) {
+        agents.clear();
     }
     for (AgentSet.Iterator iter = _links.iterator(); iter.hasNext();) {
       Link link = (Link) iter.next();
@@ -869,88 +870,7 @@ public strictfp class World
   // agent state information to be lost.  it is called after a
   // successful recompilation.
   public void realloc() {
-    // copy the breed agentsets from the old Program object from
-    // the previous compile to the new Program object that was
-    // created when we recompiled.  any new breeds that were created,
-    // we create new agentsets for.  (if this is a first compile, all
-    // the breeds will be created.)  any breeds that no longer exist
-    // are dropped.
-    for (String breedName : _program.breeds().keySet()) {
-      AgentSet breed = (AgentSet) oldBreeds.get(breedName);
-      if (breed == null) {
-        _program.breeds().put
-            (breedName,
-                new TreeAgentSet(Turtle.class, breedName.toUpperCase(), this));
-      } else {
-        _program.breeds().put(breedName, breed);
-      }
-    }
-    for (Iterator<String> breedNames = _program.linkBreeds().keySet().iterator();
-         breedNames.hasNext();) {
-      String breedName = breedNames.next();
-      boolean directed = _program.linkBreeds().get(breedName).equals("DIRECTED-LINK-BREED");
-      AgentSet breed = (AgentSet) oldLinkBreeds.get(breedName);
-      if (breed == null) {
-        breed = new TreeAgentSet(Link.class, breedName.toUpperCase(), this);
-      } else {
-        // clear the lists first
-        breed.clearDirected();
-      }
-      _program.linkBreeds().put(breedName, breed);
-      breed.setDirected(directed);
-    }
-    List<Agent> doomedAgents = new ArrayList<Agent>();
-    // call Agent.realloc() on all the turtles
-    try {
-      if (_turtles != null) {
-        for (AgentSet.Iterator iter = _turtles.iterator(); iter.hasNext();) {
-          Agent agt = iter.next().realloc(true);
-          if (agt != null) {
-            doomedAgents.add(agt);
-          }
-        }
-        for (Iterator<Agent> i = doomedAgents.iterator(); i.hasNext();) {
-          ((Turtle) i.next()).die();
-        }
-        doomedAgents.clear();
-      }
-    } catch (AgentException ex) {
-      throw new IllegalStateException(ex);
-    }
-    // call Agent.realloc() on all links
-    try {
-      if (_links != null) {
-        for (AgentSet.Iterator iter = _links.iterator(); iter.hasNext();) {
-          Agent agt = iter.next().realloc(true);
-          if (agt != null) {
-            doomedAgents.add(agt);
-          }
-        }
-        for (Iterator<Agent> i = doomedAgents.iterator(); i.hasNext();) {
-          ((Link) i.next()).die();
-        }
-        doomedAgents.clear();
-      }
-    } catch (AgentException ex) {
-      throw new IllegalStateException(ex);
-    }
-    // call Agent.realloc() on all the patches
-    try {
-      // Note: we only need to realloc() if the patch variables have changed.
-      //  ~Forrest ( 5/2/2007)
-      if (_patches != null && !_program.patchesOwn().equals(oldPatchesOwn)) {
-        for (AgentSet.Iterator iter = _patches.iterator(); iter.hasNext();) {
-          iter.next().realloc(true);
-        }
-      }
-    } catch (AgentException ex) {
-      throw new IllegalStateException(ex);
-    }
-    // call Agent.realloc() on the observer
-    _observer.realloc(true);
-    // and finally...
-    turtleBreedShapes.setUpBreedShapes(false, _program.breeds());
-    linkBreedShapes.setUpBreedShapes(false, _program.linkBreeds());
+    Realloc.realloc(this);
   }
 
   /// patch scratch
@@ -967,16 +887,17 @@ public strictfp class World
 
   /// agent-owns
 
-  public int indexOfVariable(Class<? extends Agent> agentClass, String name) {
-    if (agentClass == Observer.class) {
+  public int indexOfVariable(AgentKind kind, String name) {
+    if (kind == AgentKindJ.Observer()) {
       return observerOwnsIndexOf(name);
-    } else if (agentClass == Turtle.class) {
+    } else if (kind == AgentKindJ.Turtle()) {
       return turtlesOwnIndexOf(name);
-    } else if (agentClass == Link.class) {
+    } else if (kind == AgentKindJ.Link()) {
       return linksOwnIndexOf(name);
-    } else // patch
-    {
+    } else if (kind == AgentKindJ.Patch()) {
       return patchesOwnIndexOf(name);
+    } else {
+      throw new IllegalArgumentException(kind.toString());
     }
   }
 
@@ -1008,7 +929,7 @@ public strictfp class World
   }
 
   public String turtlesOwnNameAt(int index) {
-    return _program.turtlesOwn().get(index);
+    return _program.turtlesOwn().apply(index);
   }
 
   public int turtlesOwnIndexOf(String name) {
@@ -1020,47 +941,47 @@ public strictfp class World
   }
 
   public String linksOwnNameAt(int index) {
-    return _program.linksOwn().get(index);
+    return _program.linksOwn().apply(index);
   }
 
   int oldTurtlesOwnIndexOf(String name) {
-    return oldTurtlesOwn.indexOf(name);
+    return oldProgram.turtlesOwn().indexOf(name);
   }
 
   int oldLinksOwnIndexOf(String name) {
-    return oldLinksOwn.indexOf(name);
+    return oldProgram.linksOwn().indexOf(name);
   }
 
   public String breedsOwnNameAt(org.nlogo.api.AgentSet breed, int index) {
-    List<String> breedOwns = _program.breedsOwn().get(breed.printName());
-    return breedOwns.get(index - _program.turtlesOwn().size());
+    Seq<String> breedOwns = _program.breeds().apply(breed.printName()).owns();
+    return breedOwns.apply(index - _program.turtlesOwn().size());
   }
 
   public int breedsOwnIndexOf(AgentSet breed, String name) {
-    List<String> breedOwns = _program.breedsOwn().get(breed.printName());
-    if (breedOwns == null) {
+    org.nlogo.api.Breed found = orNull(_program.breeds().get(breed.printName()));
+    if (found == null) {
       return -1;
     }
-    int result = breedOwns.indexOf(name);
+    int result = found.owns().indexOf(name);
     if (result == -1) {
       return -1;
     }
-    return breed.type() == Turtle.class
+    return breed.kind() == AgentKindJ.Turtle()
         ? _program.turtlesOwn().size() + result
         : _program.linksOwn().size() + result;
   }
 
   public String linkBreedsOwnNameAt(AgentSet breed, int index) {
-    List<String> breedOwns = _program.linkBreedsOwn().get(breed.printName());
-    return breedOwns.get(index - _program.linksOwn().size());
+    Seq<String> breedOwns = _program.linkBreeds().apply(breed.printName()).owns();
+    return breedOwns.apply(index - _program.linksOwn().size());
   }
 
   public int linkBreedsOwnIndexOf(AgentSet breed, String name) {
-    List<String> breedOwns = _program.linkBreedsOwn().get(breed.printName());
-    if (breedOwns == null) {
+    org.nlogo.api.Breed found = orNull(_program.linkBreeds().get(breed.printName()));
+    if (found == null) {
       return -1;
     }
-    int result = breedOwns.indexOf(name);
+    int result = found.owns().indexOf(name);
     if (result == -1) {
       return -1;
     }
@@ -1071,34 +992,34 @@ public strictfp class World
    * used by Turtle.realloc()
    */
   int oldBreedsOwnIndexOf(AgentSet breed, String name) {
-    List<String> breedOwns = oldBreedsOwn.get(breed.printName());
-    if (breedOwns == null) {
+    org.nlogo.api.Breed found = orNull(oldProgram.breeds().get(breed.printName()));
+    if (found == null) {
       return -1;
     }
-    int result = breedOwns.indexOf(name);
+    int result = found.owns().indexOf(name);
     if (result == -1) {
       return -1;
     }
-    return oldTurtlesOwn.size() + result;
+    return oldProgram.turtlesOwn().size() + result;
   }
 
   /**
    * used by Link.realloc()
    */
   int oldLinkBreedsOwnIndexOf(AgentSet breed, String name) {
-    List<String> breedOwns = oldLinkBreedsOwn.get(breed.printName());
-    if (breedOwns == null) {
+    org.nlogo.api.Breed found = orNull(oldProgram.linkBreeds().get(breed.printName()));
+    if (found == null) {
       return -1;
     }
-    int result = breedOwns.indexOf(name);
+    int result = found.owns().indexOf(name);
     if (result == -1) {
       return -1;
     }
-    return oldLinksOwn.size() + result;
+    return oldProgram.linksOwn().size() + result;
   }
 
   public String patchesOwnNameAt(int index) {
-    return _program.patchesOwn().get(index);
+    return _program.patchesOwn().apply(index);
   }
 
   public int patchesOwnIndexOf(String name) {
@@ -1106,7 +1027,7 @@ public strictfp class World
   }
 
   public String observerOwnsNameAt(int index) {
-    return _program.globals().get(index);
+    return _program.globals().apply(index);
   }
 
   public int observerOwnsIndexOf(String name) {
@@ -1116,59 +1037,51 @@ public strictfp class World
   /// breeds & shapes
 
   public boolean isBreed(AgentSet breed) {
-    return _program.breeds().containsValue(breed);
+    for(AgentSet agents : breedAgents.values()) {
+      if (agents == breed) {
+        return true;
+      }
+    }
+    return false;
   }
 
   public boolean isLinkBreed(AgentSet breed) {
-    return _program.linkBreeds().containsValue(breed);
+    for(AgentSet agents : linkBreedAgents.values()) {
+      if (agents == breed) {
+        return true;
+      }
+    }
+    return false;
   }
 
   public AgentSet getBreed(String breedName) {
-    return (AgentSet) _program.breeds().get(breedName);
+    return breedAgents.get(breedName);
   }
 
   public AgentSet getLinkBreed(String breedName) {
-    return (AgentSet) _program.linkBreeds().get(breedName);
+    return linkBreedAgents.get(breedName);
   }
 
   public String getBreedSingular(AgentSet breed) {
-    if (breed == _turtles) {
-      return "TURTLE";
-    }
-
-    String breedName = breed.printName();
-    for (Map.Entry<String, String> entry : _program.breedsSingular().entrySet()) {
-      if (entry.getValue().equals(breedName)) {
-        return entry.getKey();
-      }
-    }
-
-    return "TURTLE";
+    return breed == _turtles
+      ? "TURTLE"
+      : _program.breeds().apply(breed.printName()).singular();
   }
 
   public String getLinkBreedSingular(AgentSet breed) {
-    if (breed == _links) {
-      return "LINK";
-    }
-
-    String breedName = breed.printName();
-    for (Map.Entry<String, String> entry : _program.linkBreedsSingular().entrySet()) {
-      if (entry.getValue().equals(breedName)) {
-        return entry.getKey();
-      }
-    }
-
-    return "LINK";
+    return breed == _links
+      ? "LINK"
+      : _program.linkBreeds().apply(breed.printName()).singular();
   }
 
   // assumes caller has already checked to see if the breeds are equal
   public int compareLinkBreeds(AgentSet breed1, AgentSet breed2) {
-    for (Iterator<Object> iter = _program.linkBreeds().values().iterator();
-         iter.hasNext();) {
-      AgentSet next = (AgentSet) iter.next();
-      if (next == breed1) {
+    for(scala.collection.Iterator<String> iter = _program.linkBreeds().keys().iterator();
+        iter.hasNext();) {
+      AgentSet breed = linkBreedAgents.get(iter.next());
+      if (breed == breed1) {
         return -1;
-      } else if (next == breed2) {
+      } else if (breed == breed2) {
         return 1;
       }
     }
@@ -1188,8 +1101,7 @@ public strictfp class World
     if (breed == _turtles) {
       return _program.turtlesOwn().size();
     } else {
-      List<String> breedOwns =
-          _program.breedsOwn().get(breed.printName());
+      Seq<String> breedOwns = _program.breeds().apply(breed.printName()).owns();
       return _program.turtlesOwn().size() + breedOwns.size();
     }
   }
@@ -1198,8 +1110,7 @@ public strictfp class World
     if (breed == _links) {
       return _program.linksOwn().size();
     } else {
-      List<String> breedOwns =
-          _program.linkBreedsOwn().get(breed.printName());
+      Seq<String> breedOwns = _program.linkBreeds().apply(breed.printName()).owns();
       return _program.linksOwn().size() + breedOwns.size();
     }
   }
@@ -1208,8 +1119,8 @@ public strictfp class World
     if (breed == _links) {
       return _program.linksOwn().size();
     } else {
-      List<String> breedOwns =
-          _program.linkBreedsOwn().get(breed.printName());
+      Seq<String> breedOwns =
+        _program.linkBreeds().apply(breed.printName()).owns();
       return _program.linksOwn().size() + breedOwns.size();
     }
   }
@@ -1236,31 +1147,20 @@ public strictfp class World
     return _linkShapeList.shape(name);
   }
 
-  // use of this method by other classes is discouraged
-  // since that's poor information-hiding
-  public Map<String, Object> getBreeds() {
-    return _program.breeds();
-  }
-
   public boolean breedOwns(AgentSet breed, String name) {
     if (breed == _turtles) {
       return false;
     }
-    List<String> breedOwns =
-        _program.breedsOwn().get(breed.printName());
+    Seq<String> breedOwns = _program.breeds().apply(breed.printName()).owns();
     return breedOwns.contains(name);
-  }
-
-  public Map<String, Object> getLinkBreeds() {
-    return _program.linkBreeds();
   }
 
   public boolean linkBreedOwns(AgentSet breed, String name) {
     if (breed == _links) {
       return false;
     }
-    List<String> breedOwns =
-        _program.linkBreedsOwn().get(breed.printName());
+    Seq<String> breedOwns =
+      _program.linkBreeds().apply(breed.printName()).owns();
     return breedOwns.contains(name);
   }
 
@@ -1268,6 +1168,10 @@ public strictfp class World
   public final BreedShapes turtleBreedShapes = new BreedShapes("TURTLES");
 
   /// program
+
+  @SuppressWarnings("unchecked") // Java doesn't know about variance
+  scala.collection.immutable.Seq<String> noStrings =
+      (scala.collection.immutable.List<String>) ((Object) scala.collection.immutable.Nil$.MODULE$);
 
   private Program _program = newProgram();
 
@@ -1283,38 +1187,14 @@ public strictfp class World
     _program = program;
   }
 
-  public Program newProgram() {
-    return new Program();
+  protected Program newProgram() {
+    return Program.empty();
   }
 
-  public Program newProgram(List<String> interfaceGlobals) {
-    return new Program(interfaceGlobals);
-  }
-
-  List<String> oldTurtlesOwn = new ArrayList<String>();
-  List<String> oldPatchesOwn = new ArrayList<String>();
-  List<String> oldLinksOwn = new ArrayList<String>();
-  List<String> oldGlobals = new ArrayList<String>();
-  Map<String, Object> oldBreeds = new LinkedHashMap<String, Object>();
-  Map<String, Object> oldLinkBreeds = new LinkedHashMap<String, Object>();
-  Map<String, List<String>> oldBreedsOwn = new HashMap<String, List<String>>();
-  Map<String, List<String>> oldLinkBreedsOwn = new HashMap<String, List<String>>();
+  Program oldProgram = newProgram();
 
   public void rememberOldProgram() {
-    // we could just keep the whole Program object around, but
-    // that would mean all the Procedure objects couldn't be
-    // GC'ed, which could possibly lead to a PermGen shortage.
-    // that's just a hypothesis, about the PermGen, but in any
-    // case only keeping the info we need will certainly reduce
-    // overall RAM usage - ST 12/4/07
-    oldTurtlesOwn = _program.turtlesOwn();
-    oldPatchesOwn = _program.patchesOwn();
-    oldLinksOwn = _program.linksOwn();
-    oldGlobals = _program.globals();
-    oldBreeds = _program.breeds();
-    oldLinkBreeds = _program.linkBreeds();
-    oldBreedsOwn = _program.breedsOwn();
-    oldLinkBreedsOwn = _program.linkBreedsOwn();
+    oldProgram = program();
   }
 
   /// display on/off
@@ -1366,6 +1246,11 @@ public strictfp class World
 
   public scala.collection.Iterator<Object> allStoredValues() {
     return AllStoredValues.apply(this);
+  }
+
+  // I don't seem to be able to call Option.orNull or Option.getOrElse from Java - ST 7/13/12
+  private <T> T orNull(scala.Option<T> opt) {
+    return opt.isDefined() ? opt.get() : null;
   }
 
 }

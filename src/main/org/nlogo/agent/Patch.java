@@ -3,6 +3,8 @@
 package org.nlogo.agent;
 
 import org.nlogo.api.AgentException;
+import org.nlogo.api.AgentKind;
+import org.nlogo.api.AgentKindJ;
 import org.nlogo.api.AgentVariableNumbers;
 import org.nlogo.api.AgentVariables;
 import org.nlogo.api.Color;
@@ -16,6 +18,9 @@ import java.util.ArrayList;
 public strictfp class Patch
     extends Agent
     implements org.nlogo.api.Patch {
+
+  public AgentKind kind() { return AgentKindJ.Patch(); }
+
   public static final int VAR_PXCOR = AgentVariableNumbers.VAR_PXCOR;
   public static final int VAR_PYCOR = AgentVariableNumbers.VAR_PYCOR;
   public static final int VAR_PCOLOR = AgentVariableNumbers.VAR_PCOLOR;
@@ -51,7 +56,7 @@ public strictfp class Patch
 
   public AgentSet turtlesHereAgentSet() {
     return new ArrayAgentSet
-        (Turtle.class,
+      (AgentKindJ.Turtle(),
             _turtlesHere.toArray(new Agent[_turtlesHere.size()]),
             world);
   }
@@ -113,8 +118,8 @@ public strictfp class Patch
     }
     // Keep Variables Across Recompile
     if (forRecompile) {
-      for (int i = NUMBER_PREDEFINED_VARS; i < oldvars.length && i < world.oldPatchesOwn.size(); i++) {
-        String name = world.oldPatchesOwn.get(i);
+      for (int i = NUMBER_PREDEFINED_VARS; i < oldvars.length && i < world.oldProgram.patchesOwn().size(); i++) {
+        String name = world.oldProgram.patchesOwn().apply(i);
         int newpos = world.patchesOwnIndexOf(name);
         if (newpos != -1) {
           newvars[newpos] = oldvars[i];
@@ -242,7 +247,7 @@ public strictfp class Patch
           } else if (value instanceof LogoList) {
             pcolor((LogoList) value, VAR_PCOLOR, false);
           } else {
-            wrongTypeForVariable(AgentVariables.getImplicitPatchVariables()[vn],
+            wrongTypeForVariable(AgentVariables.getImplicitPatchVariables().apply(vn),
                 Double.class, value);
           }
           break;
@@ -257,7 +262,7 @@ public strictfp class Patch
           } else if (value instanceof LogoList) {
             labelColor((LogoList) value, VAR_PLABELCOLOR);
           } else {
-            wrongTypeForVariable(AgentVariables.getImplicitPatchVariables()[vn],
+            wrongTypeForVariable(AgentVariables.getImplicitPatchVariables().apply(vn),
                 Double.class, value);
           }
           break;
@@ -505,11 +510,6 @@ public strictfp class Patch
   @Override
   public String classDisplayName() {
     return "patch";
-  }
-
-  @Override
-  public Class<Patch> getAgentClass() {
-    return Patch.class;
   }
 
   public static final int BIT = 4;
