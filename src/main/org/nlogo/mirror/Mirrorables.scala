@@ -94,8 +94,8 @@ object Mirrorables {
       wvWrappingAllowedInX -> Boolean.box(world.wrappingAllowedInX),
       wvWrappingAllowedInY -> Boolean.box(world.wrappingAllowedInY),
       wvPatchesAllBlack -> Boolean.box(world.patchesAllBlack),
-      wvTurtleBreeds -> world.program.breeds.keys.toSeq,
-      wvLinkBreeds -> world.program.linkBreeds.keys.toSeq,
+      wvTurtleBreeds -> world.program.breeds,
+      wvLinkBreeds -> world.program.linkBreeds,
       wvTrailDrawing ->
         (if (world.trailDrawer.isDirty) {
           val outputStream = new java.io.ByteArrayOutputStream
