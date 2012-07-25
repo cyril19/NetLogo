@@ -141,13 +141,20 @@ class TestMirroring extends FunSuite {
     }
   }
 
+  private val testSerializer = true
+
   def modelRenderingTest(path: String) {
     withWorkspace { (ws, mirrorables) =>
       ws.open(path)
       ws.command("random-seed 0")
       ws.command(ws.previewCommands)
       val (m0, u0) = diffs(Map(), mirrorables())
-      var state = Mirroring.merge(Map(), u0)
+      var state = Mirroring.merge(
+        Map(),
+        if (testSerializer)
+          Serializer.fromBytes(Serializer.toBytes(u0))
+        else
+          u0)
       // should I test that m0 and state are identical? maybe have a separate test for that
       val dummy = new FakeWorld(state)
       val pico = new Pico
