@@ -73,8 +73,8 @@ object Mirrorables {
       wvPatchesAllBlack,
       wvTurtleBreeds,
       wvLinkBreeds,
-      wvTrailDrawing
-      ) = 0 until 16
+      wvTrailDrawing,
+      _*) = Stream.from(0)
   }
   class MirrorableWorld(world: api.World) extends Mirrorable {
     import MirrorableWorld._
@@ -111,8 +111,8 @@ object Mirrorables {
       pvXMax,
       pvYMin,
       pvYMax,
-      pvLegendIsOpen
-      ) = 0 until 5
+      pvLegendIsOpen,
+      _*) = Stream.from(0)
   }
 
   class MirrorablePlot(val p: plot.Plot, val plots: List[plot.Plot]) extends Mirrorable {
@@ -135,8 +135,8 @@ object Mirrorables {
       ppvInterval,
       ppvColor,
       ppvX,
-      ppvPoints
-      ) = 0 until 7
+      ppvPoints,
+      _*) = Stream.from(0)
   }
   class MirrorablePlotPen(val pen: plot.PlotPen, val plots: List[plot.Plot]) extends Mirrorable {
     import MirrorablePlotPen._
