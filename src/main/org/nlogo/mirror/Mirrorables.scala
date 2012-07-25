@@ -174,10 +174,11 @@ object Mirrorables {
     val patches = world.patches.agents.asScala.map(p => new MirrorablePatch(p.asInstanceOf[api.Patch]))
     val links = world.links.agents.asScala.map(l => new MirrorableLink(l.asInstanceOf[api.Link]))
     val worldIterable = Iterable(new MirrorableWorld(world))
-    val interfaceGlobals = Iterable(new MirrorableInterfaceGlobals(world))
-    val plotMirrorables = for { p <- plots } yield new MirrorablePlot(p, plots)
-    val plotPens = for { p <- plots; pp <- p.pens } yield new MirrorablePlotPen(pp, plots)
-    (worldIterable ++ interfaceGlobals ++ turtles ++ patches ++ links ++ plotMirrorables ++ plotPens)
+    // val interfaceGlobals = Iterable(new MirrorableInterfaceGlobals(world))
+    // val plotMirrorables = for { p <- plots } yield new MirrorablePlot(p, plots)
+    // val plotPens = for { p <- plots; pp <- p.pens } yield new MirrorablePlotPen(pp, plots)
+    // (worldIterable ++ interfaceGlobals ++ turtles ++ patches ++ links ++ plotMirrorables ++ plotPens)
+    (worldIterable ++ turtles ++ patches ++ links)
   }
 
 }
