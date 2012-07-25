@@ -30,11 +30,14 @@ class FakeWorld(state: State) extends api.World {
 
   class FakeAgentSet[A <: api.Agent](val kind: api.AgentKind, val agentSeq: Seq[A], val isDirected: Boolean = false, val isUndirected: Boolean = false)
     extends api.AgentSet {
-    def count = agentSeq.size
-    def world: api.World = FakeWorld.this
-    def equalAgentSets(other: api.AgentSet) = unsupported
+    override def isEmpty = agentSeq.isEmpty
+    override def count = agentSeq.size
+    override def world: api.World = FakeWorld.this
+    override def equalAgentSets(other: api.AgentSet) = unsupported
     override val agents = (agentSeq: Iterable[api.Agent]).asJava
     override def printName = unsupported
+    override def contains(a: api.Agent) = unsupported
+    override def removableAgents = unsupported
   }
   trait FakeAgent extends api.Agent {
     val vars: Seq[AnyRef]
