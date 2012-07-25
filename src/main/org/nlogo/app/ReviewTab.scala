@@ -38,6 +38,7 @@ with BeforeLoadEvent.Handler {
   private def reset() {
     run = Seq()
     state = Map()
+    visibleState = Map()
     Scrubber.setValue(0)
     Scrubber.setEnabled(false)
     potemkinInterface = None
