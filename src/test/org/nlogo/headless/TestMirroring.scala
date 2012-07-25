@@ -47,20 +47,20 @@ class TestMirroring extends FunSuite {
 
       ws.initForTesting(1)
       val (m0, u0) = diffs(Map(), mirrorables())
-      // 9 patches + world + 2 plots + 4 pens + interface globals = 17 objects, 17 births
-      expect((17, (17, 0, 0))) { (m0.size, sizes(u0)) }
+      // 9 patches + world + observer + 2 plots + 4 pens + interface globals = 18 objects, 18 births
+      expect((18, (18, 0, 0))) { (m0.size, sizes(u0)) }
       checkAllAgents(ws, m0)
 
       ws.command("crt 10")
       val (m1, u1) = diffs(m0, mirrorables())
-      // 9 patches + 10 new turtles + world + 2 plots + 4 pens + interface globals = 27 objects, 10 births
-      expect((27, (10, 0, 0))) { (m1.size, sizes(u1)) }
+      // 9 patches + 10 new turtles + world + observer + 2 plots + 4 pens + interface globals = 28 objects, 10 births
+      expect((28, (10, 0, 0))) { (m1.size, sizes(u1)) }
       checkAllAgents(ws, m1)
 
       ws.command("ask one-of turtles [ set color red + 2 set size 3 ]")
       val (m2, u2) = diffs(m1, mirrorables())
-      // still 27 objects, 1 turtles has changed
-      expect((27, (0, 0, 1))) { (m2.size, sizes(u2)) }
+      // still 28 objects, 1 turtles has changed
+      expect((28, (0, 0, 1))) { (m2.size, sizes(u2)) }
       // VAR_COLOR = 1, VAR_SIZE = 10
       expect("List(Change(1,17.0), Change(10,3.0))") {
         u2.changes.head._2.toList.toString
@@ -69,13 +69,13 @@ class TestMirroring extends FunSuite {
 
       ws.command("ask n-of 5 turtles [ die ]")
       val (m3, u3) = diffs(m2, mirrorables())
-      // down to 22 objects, with 5 deaths
-      expect((22, (0, 5, 0))) { (m3.size, sizes(u3)) }
+      // down to 23 objects, with 5 deaths
+      expect((23, (0, 5, 0))) { (m3.size, sizes(u3)) }
       checkAllAgents(ws, m3)
 
       val (m4, u4) = diffs(m3, mirrorables())
-      // still 22 objects, nothing changed
-      expect((22, (0, 0, 0))) { (m4.size, sizes(u4)) }
+      // still 23 objects, nothing changed
+      expect((23, (0, 0, 0))) { (m4.size, sizes(u4)) }
       checkAllAgents(ws, m4)
 
       ws.command("ask one-of patches [ set pcolor green ]")
@@ -97,15 +97,15 @@ class TestMirroring extends FunSuite {
       ws.initForTesting(1, declarations)
       ws.command("create-turtles 3 [ create-links-with other turtles ]")
       val (m0, u0) = diffs(Map(), mirrorables())
-      // 9 patches + 3 turtles + 3 links + world + 2 plots + 4 pens + interface globals = 23 objects
-      expect((23, (23, 0, 0))) { (m0.size, sizes(u0)) }
+      // 9 patches + 3 turtles + 3 links + world + observer + 2 plots + 4 pens + interface globals = 24 objects
+      expect((24, (24, 0, 0))) { (m0.size, sizes(u0)) }
       checkAllAgents(ws, m0)
       ws.command("ask patches [ set pfoo 1 ] " +
         "ask turtles [ set tfoo 1 ] " +
         "ask links   [ set lfoo 1 ]")
       checkAllAgents(ws, m0)
       val (m1, u1) = diffs(m0, mirrorables())
-      expect((23, (0, 0, 0))) { (m1.size, sizes(u1)) }
+      expect((24, (0, 0, 0))) { (m1.size, sizes(u1)) }
       checkAllAgents(ws, m1)
     }
   }
@@ -121,10 +121,10 @@ class TestMirroring extends FunSuite {
       ws.command("ask n-of (count turtles / 2) turtles [ die ]")
       ws.command("ask turtles [ create-links-with other turtles ]")
       val (m1, u1) = diffs(m0, mirrorables())
-      // 9 patches + 5 turtles + 10 links + world + 2 plots + 4 pens + interface globals = 32 agents total,
+      // 9 patches + 5 turtles + 10 links + world + observer + 2 plots + 4 pens + interface globals = 33 agents total,
       // 15 of which are newborn. 6 patches changed color (some already had pxcor = pcolor)
       // and world.patchesAllBlack not true anymore, so 7 changes in all
-      expect((32, (15, 0, 7))) { (m1.size, sizes(u1)) }
+      expect((33, (15, 0, 7))) { (m1.size, sizes(u1)) }
       checkAllAgents(ws, m1)
       intercept[TestFailedException] {
         checkAllAgents(ws, state)
@@ -133,8 +133,8 @@ class TestMirroring extends FunSuite {
       checkAllAgents(ws, state)
       ws.command("ask n-of 3 turtles [ die ]")
       val (m2, u2) = diffs(m1, mirrorables())
-      // 9 patches + 2 turtles + 1 link + 2 plots + 4 pens + interface globals and the world remain
-      expect((20, (0, 12, 0))) { (m2.size, sizes(u2)) }
+      // 9 patches + 2 turtles + 1 link + 2 plots + 4 pens + observer + interface globals and the world remain
+      expect((21, (0, 12, 0))) { (m2.size, sizes(u2)) }
       checkAllAgents(ws, m2)
       state = Mirroring.merge(state, u2)
       checkAllAgents(ws, state)
@@ -167,36 +167,39 @@ class TestMirroring extends FunSuite {
         val outputPath = new java.io.File("tmp/" + outputFile)
         javax.imageio.ImageIO.write(r.exportView(ws), "png", outputPath)
       }
-      exportPNG(ws.renderer, "original")
-      exportPNG(renderer, "mirror")
+
+      if (mirrorChecksum != realChecksum) {
+        exportPNG(ws.renderer, "original")
+        exportPNG(renderer, "mirror")
+      }
 
       expect(realChecksum) { mirrorChecksum }
     }
   }
 
-  test("slime") {
-    modelRenderingTest("models/Sample Models/Biology/Slime.nlogo")
-  }
-
-  test("wolf") {
-    modelRenderingTest("models/Sample Models/Biology/Wolf Sheep Predation.nlogo")
-  }
-
-  test("fireworks") {
-    modelRenderingTest("models/Sample Models/Art/Fireworks.nlogo")
-  }
-
-  test("team-assembly") {
-    modelRenderingTest("models/Sample Models/Networks/Team Assembly.nlogo")
-  }
-
-  test("preferential-attachment") {
-    modelRenderingTest("models/Sample Models/Networks/Preferential Attachment.nlogo")
-  }
-
-  test("network-example") {
-    modelRenderingTest("models/Code Examples/Network Example.nlogo")
-  }
+  //  test("slime") {
+  //    modelRenderingTest("models/Sample Models/Biology/Slime.nlogo")
+  //  }
+  //
+  //  test("wolf") {
+  //    modelRenderingTest("models/Sample Models/Biology/Wolf Sheep Predation.nlogo")
+  //  }
+  //
+  //  test("fireworks") {
+  //    modelRenderingTest("models/Sample Models/Art/Fireworks.nlogo")
+  //  }
+  //
+  //  test("team-assembly") {
+  //    modelRenderingTest("models/Sample Models/Networks/Team Assembly.nlogo")
+  //  }
+  //
+  //  test("preferential-attachment") {
+  //    modelRenderingTest("models/Sample Models/Networks/Preferential Attachment.nlogo")
+  //  }
+  //
+  //  test("network-example") {
+  //    modelRenderingTest("models/Code Examples/Network Example.nlogo")
+  //  }
 
   //  test("small-worlds") {
   //    // fails because "Nothing named USER-MESSAGE has been defined"
@@ -204,16 +207,49 @@ class TestMirroring extends FunSuite {
   //    modelRenderingTest("models/Sample Models/Networks/Small Worlds.nlogo")
   //  }
 
-  test("fire") {
-    modelRenderingTest("models/Sample Models/Earth Science/Fire.nlogo")
+  //  test("fire") {
+  //    modelRenderingTest("models/Sample Models/Earth Science/Fire.nlogo")
+  //  }
+  //
+  //  test("Echo model for testing turtle labels") {
+  //    modelRenderingTest("models/Sample Models/Biology/Evolution/Echo.nlogo")
+  //  }
+  //
+  //  test("Color Chart Example for testing patch labels") {
+  //    modelRenderingTest("models/Code Examples/Color Chart Example.nlogo")
+  //  }
+
+  def allTestableModels = {
+    def hasExclusion(fileName: String) = {
+      val exclusions = Seq(
+        "SYSTEM-DYNAMICS-SETUP",
+        "MOUSE-DOWN?",
+        "USER-MESSAGE",
+        "MOUSE-INSIDE?",
+        "NEED-TO-MANUALLY-MAKE-PREVIEW-FOR-THIS-MODEL",
+        "USER-YES-OR-NO?",
+        "USER-INPUT",
+        "GIS:")
+      io.Source.fromFile(fileName)
+        .getLines.exists { line =>
+          exclusions.exists { exclusion =>
+            line.toUpperCase contains exclusion
+          }
+        }
+    }
+    io.Source.fromFile("models/test/checksums.txt")
+      .getLines.map(_.split(" - ")(0)) // get model paths
+      .filterNot(hasExclusion)
   }
 
-  test("Echo model for testing turtle labels") {
-    modelRenderingTest("models/Sample Models/Biology/Evolution/Echo.nlogo")
-  }
+  def modelsToTest = Seq(
+    "models/Sample Models/Networks/Diffusion on a Directed Network.nlogo",
+    "models/Code Examples/Link Lattice Example.nlogo")
 
-  test("Color Chart Example for testing patch labels") {
-    modelRenderingTest("models/Code Examples/Color Chart Example.nlogo")
+  modelsToTest.foreach { modelPath =>
+    test("Mirroring: " + modelPath) {
+      modelRenderingTest(modelPath)
+    }
   }
 
 }

@@ -10,7 +10,9 @@ import api.AgentVariableNumbers._
 
 class FakeWorld(state: State) extends api.World {
 
-  private val (worldVars, patchStates, turtleStates, linkStates) = {
+  import MirrorableWorld._
+
+  private val (worldVars, observerVars, patchStates, turtleStates, linkStates) = {
     // each group will be a seq of (agentId, vars):
     val groups = state.toSeq.groupBy(_._1.kind).map {
       case (kind, states) => kind -> states.map {
@@ -18,6 +20,7 @@ class FakeWorld(state: State) extends api.World {
       }
     }
     (groups(World).head._2, // world should always be there
+      groups(Observer).head._2, // observer should always be there
       groups(Patch), // patches should always be there
       groups.getOrElse(Turtle, Seq()), // there might be no turtles
       groups.getOrElse(Link, Seq())) // there might be no links
@@ -28,8 +31,9 @@ class FakeWorld(state: State) extends api.World {
       .map(patch => api.Color.getRGBInt(patch.pcolor))
       .toArray
 
-  class FakeAgentSet[A <: api.Agent](val kind: api.AgentKind, val agentSeq: Seq[A], val isDirected: Boolean = false, val isUndirected: Boolean = false)
+  class FakeAgentSet[A <: api.Agent](val kind: api.AgentKind, val agentSeq: Seq[A], val isDirected: Boolean = false)
     extends api.AgentSet {
+    val isUndirected: Boolean = !isDirected
     def count = agentSeq.size
     def world: api.World = FakeWorld.this
     def equalAgentSets(other: api.AgentSet) = unsupported
@@ -61,7 +65,7 @@ class FakeWorld(state: State) extends api.World {
     override def labelString = org.nlogo.api.Dump.logoObject(vars(VAR_LABEL))
     override def hasLabel = labelString.nonEmpty
     override def labelColor = vars(VAR_LABELCOLOR)
-    override def getBreed = turtles
+    override def getBreed = turtleBreeds.getOrElse(vars(VAR_BREED).asInstanceOf[String], turtles)
     override def size = vars(VAR_SIZE).asInstanceOf[Double]
     override def shape = vars(VAR_SHAPE).asInstanceOf[String]
     override def getBreedIndex = unsupported
@@ -96,6 +100,7 @@ class FakeWorld(state: State) extends api.World {
     }.sortBy(_.id))
 
   class FakeLink(agentId: Long, val vars: Seq[AnyRef]) extends api.Link with FakeAgent {
+    import MirrorableLink._
     override def id = agentId
     override def kind = api.AgentKind.Link
     override def getBreedIndex: Int = unsupported
@@ -105,36 +110,66 @@ class FakeWorld(state: State) extends api.World {
     override def hasLabel: Boolean = labelString.nonEmpty
     override def lineThickness: Double = vars(VAR_THICKNESS).asInstanceOf[Double]
     override def hidden: Boolean = vars(VAR_LHIDDEN).asInstanceOf[Boolean]
-    override def linkDestinationSize: Double = unsupported
-    override def heading: Double = unsupported
-    override def isDirectedLink: Boolean = false // TODO ((AgentSet) variables[VAR_BREED]).isDirected()
+    override def linkDestinationSize: Double = end2.size
+    override def heading: Double = vars(lvHeading).asInstanceOf[Double]
+    override def isDirectedLink: Boolean = getBreed.isDirected
     override def x1: Double = end1.xcor
     override def y1: Double = end1.ycor
     override def x2: Double = end2.xcor
     override def y2: Double = end2.ycor
-    override def midpointY: Double = unsupported
-    override def midpointX: Double = unsupported
-    override def getBreed: api.AgentSet = links
+    override def midpointX: Double = vars(lvMidpointX).asInstanceOf[Double]
+    override def midpointY: Double = vars(lvMidpointY).asInstanceOf[Double]
+    override def getBreed: api.AgentSet = linkBreeds.getOrElse(vars(VAR_LBREED).asInstanceOf[String], links)
     // maybe I should keep a map from id to agent somewhere? Not sure it's worth it, though...
     override def end1 = turtles.agentSeq.find(_.id == vars(VAR_END1).asInstanceOf[Long]).get
     override def end2 = turtles.agentSeq.find(_.id == vars(VAR_END2).asInstanceOf[Long]).get
-    override def size: Double = 1 // TODO: world.protractor.distance(end1, end2, true)
+    override def size: Double = vars(lvSize).asInstanceOf[Double]
     override def shape = vars(VAR_LSHAPE).asInstanceOf[String]
     override def toString = id + " link " + end1.id + " " + end2.id // TODO: get breed name in there
   }
 
-  override val links = new FakeAgentSet(api.AgentKind.Link, linkStates.map {
-    case (id, vars) => new FakeLink(id, vars)
-  }.sortBy(_.id)) {
-    override val agents = (agentSeq.sortBy(l => (l.end1.id, l.end2.id)): Iterable[api.Agent]).asJava
+  override val links = {
+    val agentSeq = linkStates
+      .map { case (id, vars) => new FakeLink(id, vars) }
+      .sortBy(_.id)
+    new FakeAgentSet(api.AgentKind.Link, agentSeq, worldVar[Boolean](wvUnbreededLinksAreDirected)) {
+      override val agents =
+        (agentSeq.sortBy(l => (l.end1.id, l.end2.id)): Iterable[api.Agent]).asJava
+    }
   }
 
-  import MirrorableWorld._
+  class FakeObserver(val vars: Seq[AnyRef]) extends api.Observer with FakeAgent {
+    import MirrorableObserver._
+    def targetAgent: api.Agent = vars(ovTargetAgent).asInstanceOf[Option[AgentKey]].flatMap {
+      _ match {
+        case AgentKey(Turtle, id) => turtles.agentSeq.find(_.id == id)
+        case AgentKey(Link, id)   => links.agentSeq.find(_.id == id)
+        case AgentKey(Patch, id)  => patches.agentSeq.find(_.id == id)
+      }
+    }.orNull
+    def kind = api.AgentKind.Observer
+    def id = 0
+    def size = 0
+    def shape = ""
+    def perspective: api.Perspective = unsupported
+    def heading: Double = unsupported
+    def pitch: Double = unsupported
+    def roll: Double = unsupported
+    def oxcor: Double = unsupported
+    def oycor: Double = unsupported
+    def ozcor: Double = unsupported
+    def dx: Double = unsupported
+    def dy: Double = unsupported
+    def dz: Double = unsupported
+    def setPerspective(p: api.Perspective, a: api.Agent) = unsupported
+  }
+
   private def worldVar[T](i: Int) = worldVars(i).asInstanceOf[T]
 
   def patchesWithLabels = worldVar[Int](wvPatchesWithLabels)
   def turtleShapeList = worldVar[api.ShapeList](wvTurtleShapeList)
   def linkShapeList = worldVar[api.ShapeList](wvlinkShapeList)
+  println(linkShapeList.getNames)
   def patchSize = worldVar[Double](wvPatchSize)
   def worldWidth = worldVar[Int](wvWorldWidth)
   def worldHeight = worldVar[Int](wvWorldHeight)
@@ -155,26 +190,37 @@ class FakeWorld(state: State) extends api.World {
       linkBreeds = worldVar[BreedMap](wvLinkBreeds))
   }
 
-  private def makeBreeds[A <: FakeAgent](breedNames: Iterable[String], agentSet: FakeAgentSet[A]): Map[String, FakeAgentSet[_]] = {
-    val nameToAgentSet = { breedName: String =>
-      val agentSeq = agentSet.agentSeq.filter(_.vars(VAR_BREED) == breedName)
-      breedName -> new FakeAgentSet[A](agentSet.kind, agentSeq)
-    }
-    breedNames.map(nameToAgentSet).toMap
-  }
+  private def makeBreeds[A <: FakeAgent](
+    breeds: Iterable[api.Breed],
+    allAgents: FakeAgentSet[A],
+    breedVariableIndex: Int): Map[String, FakeAgentSet[_]] =
+    breeds.map { breed =>
+      val agentSeq = allAgents.agentSeq.filter(_.vars(breedVariableIndex) == breed.name)
+      breed.name -> new FakeAgentSet[A](allAgents.kind, agentSeq, breed.isDirected)
+    }.toMap
 
-  private val turtleBreeds = makeBreeds(program.breeds.keys, turtles)
-  private val linkBreeds = makeBreeds(program.linkBreeds.keys, links)
+  private val turtleBreeds = makeBreeds(program.breeds.values, turtles, VAR_BREED)
+  private val linkBreeds = makeBreeds(program.linkBreeds.values, links, VAR_LBREED)
 
   override def getBreed(name: String) = turtleBreeds(name)
   override def getLinkBreed(name: String) = linkBreeds(name)
 
   def getPatch(i: Int): api.Patch = patches.agentSeq(i)
 
+  override lazy val observer: api.Observer = new FakeObserver(observerVars)
+
   // unsupported
-  def wrap(pos: Double, min: Double, max: Double): Double = unsupported
+  def wrap(pos: Double, min: Double, max: Double): Double =
+    // This is basically copied from org.nlogo.agent.Topology to avoid a dependency to the latter.
+    // Maybe the Topology.wrap function should be made accessible from the api package. NP 2012-07-24 
+    if (pos >= max)
+      (min + ((pos - max) % (max - min)))
+    else if (pos < min) {
+      val result = max - ((min - pos) % (max - min))
+      if (result < max) result else min
+    } else pos
+
   def ticks: Double = unsupported
-  def observer: api.Observer = unsupported
   def getPatchAt(x: Double, y: Double): api.Patch = unsupported
   def fastGetPatchAt(x: Int, y: Int): api.Patch = unsupported
   def followOffsetX: Double = unsupported

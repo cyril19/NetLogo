@@ -19,21 +19,29 @@ object Mirrorables {
   case object PlotPen extends Kind
   case object InterfaceGlobals extends Kind
 
+  implicit def agentKindToMirrorKind(agentKind: api.AgentKind) = agentKind match {
+    case api.AgentKind.Observer => Observer
+    case api.AgentKind.Turtle   => Turtle
+    case api.AgentKind.Patch    => Patch
+    case api.AgentKind.Link     => Link
+  }
+
   // so we don't fill up memory with duplicate AgentKey objects
   val keyCache = collection.mutable.WeakHashMap[api.Agent, AgentKey]()
-
+  def getAgentKey(agent: api.Agent) = keyCache.getOrElseUpdate(agent, AgentKey(agent.kind, agent.id))
   abstract class MirrorableAgent[T <: api.Agent](agent: T) extends Mirrorable {
     override def getVariable(index: Int) = variables.getOrElse(index, agent.getVariable(index))
-    override def agentKey = keyCache.getOrElseUpdate(agent, AgentKey(kind, agent.id))
+    override def agentKey = getAgentKey(agent)
   }
 
   object MirrorableTurtle {
     val tvLineThickness = api.AgentVariables.getImplicitTurtleVariables.size
+    val lastIndex = tvLineThickness
   }
   class MirrorableTurtle(turtle: api.Turtle) extends MirrorableAgent(turtle) {
     import MirrorableTurtle._
     override def kind = Turtle
-    override def nbVariables = api.AgentVariables.getImplicitTurtleVariables.size + 1
+    override def nbVariables = lastIndex + 1
     override val variables = Map(
       VAR_BREED -> turtle.getBreed.printName,
       tvLineThickness -> Double.box(turtle.lineThickness))
@@ -47,13 +55,40 @@ object Mirrorables {
       VAR_PYCOR -> Int.box(patch.pycor))
   }
 
+  object MirrorableLink {
+    private val n = api.AgentVariables.getImplicitLinkVariables.size
+    val Seq(
+      lvSize,
+      lvHeading,
+      lvMidpointX,
+      lvMidpointY,
+      _*) = Stream.from(n)
+    val lastIndex = lvMidpointY
+  }
   class MirrorableLink(link: api.Link) extends MirrorableAgent(link) {
+    import MirrorableLink._
     override def kind = Link
-    override def nbVariables = api.AgentVariables.getImplicitLinkVariables.size
+    override def nbVariables = lastIndex + 1
     override val variables = Map(
       VAR_END1 -> Long.box(link.end1.id),
       VAR_END2 -> Long.box(link.end2.id),
-      VAR_LBREED -> link.getBreed.printName)
+      VAR_LBREED -> link.getBreed.printName,
+      lvSize -> Double.box(link.size),
+      lvHeading -> Double.box(link.heading),
+      lvMidpointX -> Double.box(link.midpointX),
+      lvMidpointY -> Double.box(link.midpointY))
+  }
+
+  object MirrorableObserver {
+    val ovTargetAgent = 0
+    val lastIndex = ovTargetAgent
+  }
+  class MirrorableObserver(observer: api.Observer) extends MirrorableAgent(observer) {
+    import MirrorableObserver._
+    override def kind = Link
+    override def nbVariables = lastIndex + 1
+    override val variables = Map(
+      ovTargetAgent -> Option(observer.targetAgent).map(getAgentKey))
   }
 
   object MirrorableWorld {
@@ -73,8 +108,9 @@ object Mirrorables {
       wvPatchesAllBlack,
       wvTurtleBreeds,
       wvLinkBreeds,
-      wvTrailDrawing
-      ) = 0 until 16
+      wvUnbreededLinksAreDirected,
+      wvTrailDrawing,
+      _*) = Stream.from(0)
   }
   class MirrorableWorld(world: api.World) extends Mirrorable {
     import MirrorableWorld._
@@ -96,6 +132,7 @@ object Mirrorables {
       wvPatchesAllBlack -> Boolean.box(world.patchesAllBlack),
       wvTurtleBreeds -> world.program.breeds,
       wvLinkBreeds -> world.program.linkBreeds,
+      wvUnbreededLinksAreDirected -> Boolean.box(world.links.isDirected),
       wvTrailDrawing ->
         (if (world.trailDrawer.isDirty) {
           val outputStream = new java.io.ByteArrayOutputStream
@@ -111,8 +148,8 @@ object Mirrorables {
       pvXMax,
       pvYMin,
       pvYMax,
-      pvLegendIsOpen
-      ) = 0 until 5
+      pvLegendIsOpen,
+      _*) = Stream.from(0)
   }
 
   class MirrorablePlot(val p: plot.Plot, val plots: List[plot.Plot]) extends Mirrorable {
@@ -135,8 +172,8 @@ object Mirrorables {
       ppvInterval,
       ppvColor,
       ppvX,
-      ppvPoints
-      ) = 0 until 7
+      ppvPoints,
+      _*) = Stream.from(0)
   }
   class MirrorablePlotPen(val pen: plot.PlotPen, val plots: List[plot.Plot]) extends Mirrorable {
     import MirrorablePlotPen._
@@ -175,9 +212,10 @@ object Mirrorables {
     val links = world.links.agents.asScala.map(l => new MirrorableLink(l.asInstanceOf[api.Link]))
     val worldIterable = Iterable(new MirrorableWorld(world))
     val interfaceGlobals = Iterable(new MirrorableInterfaceGlobals(world))
+    val observerIterable = Iterable(new MirrorableObserver(world.observer))
     val plotMirrorables = for { p <- plots } yield new MirrorablePlot(p, plots)
     val plotPens = for { p <- plots; pp <- p.pens } yield new MirrorablePlotPen(pp, plots)
-    (worldIterable ++ interfaceGlobals ++ turtles ++ patches ++ links ++ plotMirrorables ++ plotPens)
+    (worldIterable ++ interfaceGlobals ++ observerIterable ++ turtles ++ patches ++ links ++ plotMirrorables ++ plotPens)
   }
 
 }
