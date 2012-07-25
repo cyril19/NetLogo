@@ -21,6 +21,7 @@ class Tabs(val workspace: GUIWorkspace,
 
   val interfaceTab = new InterfaceTab(workspace, dialogFactory)
   val proceduresTab = new MainProceduresTab(workspace)
+  val reviewTab = new ReviewTab(workspace)
 
   var previousTab: java.awt.Component = interfaceTab
   var currentTab: java.awt.Component = interfaceTab
@@ -28,6 +29,7 @@ class Tabs(val workspace: GUIWorkspace,
   def init(moreTabs: (String, java.awt.Component) *) {
     addTab(I18N.gui.get("tabs.run"), interfaceTab)
     addTab(I18N.gui.get("tabs.code"), proceduresTab)
+    addTab("Review", reviewTab)
     for((name, tab) <- moreTabs)
       addTab(name, tab)
   }
