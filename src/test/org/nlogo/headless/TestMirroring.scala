@@ -47,20 +47,20 @@ class TestMirroring extends FunSuite {
 
       ws.initForTesting(1)
       val (m0, u0) = diffs(Map(), mirrorables())
-      // 9 patches + world + observer + 2 plots + 4 pens + interface globals = 18 objects, 18 births
-      expect((18, (18, 0, 0))) { (m0.size, sizes(u0)) }
+      // 9 patches + world + observer = 11 objects, 11 births
+      expect((11, (11, 0, 0))) { (m0.size, sizes(u0)) }
       checkAllAgents(ws, m0)
 
       ws.command("crt 10")
       val (m1, u1) = diffs(m0, mirrorables())
-      // 9 patches + 10 new turtles + world + observer + 2 plots + 4 pens + interface globals = 28 objects, 10 births
-      expect((28, (10, 0, 0))) { (m1.size, sizes(u1)) }
+      // 9 patches + 10 new turtles + world + observer = 21 objects, 10 births
+      expect((21, (10, 0, 0))) { (m1.size, sizes(u1)) }
       checkAllAgents(ws, m1)
 
       ws.command("ask one-of turtles [ set color red + 2 set size 3 ]")
       val (m2, u2) = diffs(m1, mirrorables())
-      // still 28 objects, 1 turtles has changed
-      expect((28, (0, 0, 1))) { (m2.size, sizes(u2)) }
+      // still 21 objects, 1 turtles has changed
+      expect((21, (0, 0, 1))) { (m2.size, sizes(u2)) }
       // VAR_COLOR = 1, VAR_SIZE = 10
       expect("List(Change(1,17.0), Change(10,3.0))") {
         u2.changes.head._2.toList.toString
@@ -69,13 +69,13 @@ class TestMirroring extends FunSuite {
 
       ws.command("ask n-of 5 turtles [ die ]")
       val (m3, u3) = diffs(m2, mirrorables())
-      // down to 23 objects, with 5 deaths
-      expect((23, (0, 5, 0))) { (m3.size, sizes(u3)) }
+      // down to 16 objects, with 5 deaths
+      expect((16, (0, 5, 0))) { (m3.size, sizes(u3)) }
       checkAllAgents(ws, m3)
 
       val (m4, u4) = diffs(m3, mirrorables())
-      // still 23 objects, nothing changed
-      expect((23, (0, 0, 0))) { (m4.size, sizes(u4)) }
+      // still 16 objects, nothing changed
+      expect((16, (0, 0, 0))) { (m4.size, sizes(u4)) }
       checkAllAgents(ws, m4)
 
       ws.command("ask one-of patches [ set pcolor green ]")
@@ -97,15 +97,15 @@ class TestMirroring extends FunSuite {
       ws.initForTesting(1, declarations)
       ws.command("create-turtles 3 [ create-links-with other turtles ]")
       val (m0, u0) = diffs(Map(), mirrorables())
-      // 9 patches + 3 turtles + 3 links + world + observer + 2 plots + 4 pens + interface globals = 24 objects
-      expect((24, (24, 0, 0))) { (m0.size, sizes(u0)) }
+      // 9 patches + 3 turtles + 3 links + world + observer = 17 objects
+      expect((17, (17, 0, 0))) { (m0.size, sizes(u0)) }
       checkAllAgents(ws, m0)
       ws.command("ask patches [ set pfoo 1 ] " +
         "ask turtles [ set tfoo 1 ] " +
         "ask links   [ set lfoo 1 ]")
       checkAllAgents(ws, m0)
       val (m1, u1) = diffs(m0, mirrorables())
-      expect((24, (0, 0, 0))) { (m1.size, sizes(u1)) }
+      expect((17, (0, 0, 0))) { (m1.size, sizes(u1)) }
       checkAllAgents(ws, m1)
     }
   }
@@ -121,10 +121,10 @@ class TestMirroring extends FunSuite {
       ws.command("ask n-of (count turtles / 2) turtles [ die ]")
       ws.command("ask turtles [ create-links-with other turtles ]")
       val (m1, u1) = diffs(m0, mirrorables())
-      // 9 patches + 5 turtles + 10 links + world + observer + 2 plots + 4 pens + interface globals = 33 agents total,
+      // 9 patches + 5 turtles + 10 links + world + observer = 26 agents total,
       // 15 of which are newborn. 6 patches changed color (some already had pxcor = pcolor)
       // and world.patchesAllBlack not true anymore, so 7 changes in all
-      expect((33, (15, 0, 7))) { (m1.size, sizes(u1)) }
+      expect((26, (15, 0, 7))) { (m1.size, sizes(u1)) }
       checkAllAgents(ws, m1)
       intercept[TestFailedException] {
         checkAllAgents(ws, state)
@@ -133,13 +133,15 @@ class TestMirroring extends FunSuite {
       checkAllAgents(ws, state)
       ws.command("ask n-of 3 turtles [ die ]")
       val (m2, u2) = diffs(m1, mirrorables())
-      // 9 patches + 2 turtles + 1 link + 2 plots + 4 pens + observer + interface globals and the world remain
-      expect((21, (0, 12, 0))) { (m2.size, sizes(u2)) }
+      // 9 patches + 2 turtles + 1 link + observer and the world remain
+      expect((14, (0, 12, 0))) { (m2.size, sizes(u2)) }
       checkAllAgents(ws, m2)
       state = Mirroring.merge(state, u2)
       checkAllAgents(ws, state)
     }
   }
+
+  private val testSerializer = true
 
   def modelRenderingTest(path: String) {
     withWorkspace { (ws, mirrorables) =>
@@ -147,7 +149,12 @@ class TestMirroring extends FunSuite {
       ws.command("random-seed 0")
       ws.command(ws.previewCommands)
       val (m0, u0) = diffs(Map(), mirrorables())
-      var state = Mirroring.merge(Map(), u0)
+      var state = Mirroring.merge(
+        Map(),
+        if (testSerializer)
+          Serializer.fromBytes(Serializer.toBytes(u0))
+        else
+          u0)
       // should I test that m0 and state are identical? maybe have a separate test for that
       val dummy = new FakeWorld(state)
       val pico = new Pico
@@ -243,13 +250,17 @@ class TestMirroring extends FunSuite {
   }
 
   def modelsToTest = Seq(
+    "models/Code Examples/HSB and RGB Example.nlogo",
+    "models/Code Examples/Halo Example.nlogo",
+    "models/Code Examples/Perspective Demos/GasLab Gas in a Box (Perspective Demo).nlogo",
+    "models/Code Examples/Image Import Example.nlogo",
     "models/Sample Models/Networks/Diffusion on a Directed Network.nlogo",
     "models/Code Examples/Link Lattice Example.nlogo")
 
-  modelsToTest.foreach { modelPath =>
-    test("Mirroring: " + modelPath) {
-      modelRenderingTest(modelPath)
-    }
-  }
+//  modelsToTest.foreach { modelPath =>
+//    test("Mirroring: " + modelPath) {
+//      modelRenderingTest(modelPath)
+//    }
+//  }
 
 }

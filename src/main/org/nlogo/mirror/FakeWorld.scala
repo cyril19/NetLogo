@@ -33,12 +33,15 @@ class FakeWorld(state: State) extends api.World {
 
   class FakeAgentSet[A <: api.Agent](val kind: api.AgentKind, val agentSeq: Seq[A], val isDirected: Boolean = false)
     extends api.AgentSet {
-    val isUndirected: Boolean = !isDirected
-    def count = agentSeq.size
-    def world: api.World = FakeWorld.this
-    def equalAgentSets(other: api.AgentSet) = unsupported
+    override val isUndirected: Boolean = !isDirected
+    override def isEmpty = agentSeq.isEmpty
+    override def count = agentSeq.size
+    override def world: api.World = FakeWorld.this
+    override def equalAgentSets(other: api.AgentSet) = unsupported
     override val agents = (agentSeq: Iterable[api.Agent]).asJava
     override def printName = unsupported
+    override def contains(a: api.Agent) = unsupported
+    override def removableAgents = unsupported
   }
   trait FakeAgent extends api.Agent {
     val vars: Seq[AnyRef]
@@ -61,7 +64,7 @@ class FakeWorld(state: State) extends api.World {
     override def heading = vars(VAR_HEADING).asInstanceOf[Double]
     override def hidden = vars(VAR_HIDDEN).asInstanceOf[Boolean]
     override def lineThickness = vars(tvLineThickness).asInstanceOf[Double]
-    override def color = vars(VAR_COLOR)
+    override def color: AnyRef = vars(VAR_COLOR)
     override def labelString = org.nlogo.api.Dump.logoObject(vars(VAR_LABEL))
     override def hasLabel = labelString.nonEmpty
     override def labelColor = vars(VAR_LABELCOLOR)
@@ -85,7 +88,7 @@ class FakeWorld(state: State) extends api.World {
     override def id = agentId
     override def pxcor = vars(VAR_PXCOR).asInstanceOf[Int]
     override def pycor = vars(VAR_PYCOR).asInstanceOf[Int]
-    override def pcolor = vars(VAR_PCOLOR)
+    override def pcolor: AnyRef = vars(VAR_PCOLOR)
     override def labelString = org.nlogo.api.Dump.logoObject(vars(VAR_PLABEL))
     override def hasLabel = labelString.nonEmpty
     override def labelColor = vars(VAR_PLABELCOLOR)
@@ -140,12 +143,13 @@ class FakeWorld(state: State) extends api.World {
 
   class FakeObserver(val vars: Seq[AnyRef]) extends api.Observer with FakeAgent {
     import MirrorableObserver._
-    def targetAgent: api.Agent = vars(ovTargetAgent).asInstanceOf[Option[AgentKey]].flatMap {
-      _ match {
-        case AgentKey(Turtle, id) => turtles.agentSeq.find(_.id == id)
-        case AgentKey(Link, id)   => links.agentSeq.find(_.id == id)
-        case AgentKey(Patch, id)  => patches.agentSeq.find(_.id == id)
-      }
+    def targetAgent: api.Agent = vars(ovTargetAgent).asInstanceOf[Option[(Int, Long)]].flatMap {
+      case (agentKind, id) =>
+        Serializer.agentKindFromInt(agentKind) match {
+          case Turtle => turtles.agentSeq.find(_.id == id)
+          case Link   => links.agentSeq.find(_.id == id)
+          case Patch  => patches.agentSeq.find(_.id == id)
+        }
     }.orNull
     def kind = api.AgentKind.Observer
     def id = 0
@@ -169,7 +173,6 @@ class FakeWorld(state: State) extends api.World {
   def patchesWithLabels = worldVar[Int](wvPatchesWithLabels)
   def turtleShapeList = worldVar[api.ShapeList](wvTurtleShapeList)
   def linkShapeList = worldVar[api.ShapeList](wvlinkShapeList)
-  println(linkShapeList.getNames)
   def patchSize = worldVar[Double](wvPatchSize)
   def worldWidth = worldVar[Int](wvWorldWidth)
   def worldHeight = worldVar[Int](wvWorldHeight)
@@ -184,10 +187,13 @@ class FakeWorld(state: State) extends api.World {
   def trailDrawing = worldVar[Option[Array[Byte]]](wvTrailDrawing)
 
   def program = {
-    type BreedMap = collection.immutable.ListMap[String, api.Breed]
+    def makeBreedMap(breedsVar: Int) =
+      worldVar[collection.immutable.ListMap[String, Boolean]](breedsVar).map {
+        case (breedName, isDirected) => breedName -> api.Breed(breedName, "", Seq(), isDirected)
+      }
     api.Program.empty.copy(
-      breeds = worldVar[BreedMap](wvTurtleBreeds),
-      linkBreeds = worldVar[BreedMap](wvLinkBreeds))
+      breeds = makeBreedMap(wvTurtleBreeds),
+      linkBreeds = makeBreedMap(wvLinkBreeds))
   }
 
   private def makeBreeds[A <: FakeAgent](

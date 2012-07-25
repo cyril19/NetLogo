@@ -88,7 +88,7 @@ object Mirrorables {
     override def kind = Link
     override def nbVariables = lastIndex + 1
     override val variables = Map(
-      ovTargetAgent -> Option(observer.targetAgent).map(getAgentKey))
+      ovTargetAgent -> Option(observer.targetAgent).map(getAgentKey).map(key => (Serializer.agentKindToInt(key.kind), key.id)))
   }
 
   object MirrorableWorld {
@@ -130,8 +130,8 @@ object Mirrorables {
       wvWrappingAllowedInX -> Boolean.box(world.wrappingAllowedInX),
       wvWrappingAllowedInY -> Boolean.box(world.wrappingAllowedInY),
       wvPatchesAllBlack -> Boolean.box(world.patchesAllBlack),
-      wvTurtleBreeds -> world.program.breeds,
-      wvLinkBreeds -> world.program.linkBreeds,
+      wvTurtleBreeds -> world.program.breeds.map { case (breedName, breed) => breedName -> breed.isDirected },
+      wvLinkBreeds -> world.program.linkBreeds.map { case (breedName, breed) => breedName -> breed.isDirected },
       wvUnbreededLinksAreDirected -> Boolean.box(world.links.isDirected),
       wvTrailDrawing ->
         (if (world.trailDrawer.isDirty) {
@@ -211,11 +211,12 @@ object Mirrorables {
     val patches = world.patches.agents.asScala.map(p => new MirrorablePatch(p.asInstanceOf[api.Patch]))
     val links = world.links.agents.asScala.map(l => new MirrorableLink(l.asInstanceOf[api.Link]))
     val worldIterable = Iterable(new MirrorableWorld(world))
-    val interfaceGlobals = Iterable(new MirrorableInterfaceGlobals(world))
     val observerIterable = Iterable(new MirrorableObserver(world.observer))
-    val plotMirrorables = for { p <- plots } yield new MirrorablePlot(p, plots)
-    val plotPens = for { p <- plots; pp <- p.pens } yield new MirrorablePlotPen(pp, plots)
-    (worldIterable ++ interfaceGlobals ++ observerIterable ++ turtles ++ patches ++ links ++ plotMirrorables ++ plotPens)
+    // val interfaceGlobals = Iterable(new MirrorableInterfaceGlobals(world))
+    // val plotMirrorables = for { p <- plots } yield new MirrorablePlot(p, plots)
+    // val plotPens = for { p <- plots; pp <- p.pens } yield new MirrorablePlotPen(pp, plots)
+    // (worldIterable ++ observerIterable ++ interfaceGlobals ++ turtles ++ patches ++ links ++ plotMirrorables ++ plotPens)
+    (worldIterable ++ observerIterable ++ turtles ++ patches ++ links)
   }
 
 }

@@ -4,7 +4,8 @@ package org.nlogo.mirror
 
 import java.io.{ ByteArrayOutputStream, DataOutputStream, DataOutput,
                  ByteArrayInputStream, DataInputStream }
-import collection.immutable.Vector
+import collection.immutable.{ ListMap, Vector }
+import org.nlogo.{ api, shape }
 
 object Serializer {
 
@@ -19,7 +20,10 @@ object Serializer {
   val NoneType = 8
   val SomeType = 9
   val SeqType = 10
-  val ByteArrayType = 11
+  val ListMapType = 11
+  val ByteArrayType = 12
+  val ShapeListType = 13
+  val LogoListType = 14
 
   private var missingTypes = Set[String]()
 
@@ -54,6 +58,12 @@ object Serializer {
         case xs: Seq[_] =>
           data.writeByte(SeqType)
           writeSeq(xs.asInstanceOf[Seq[AnyRef]])
+        case xs: api.LogoList =>
+          data.writeByte(LogoListType)
+          writeSeq(xs.toVector)
+        case xs: ListMap[_, _] =>
+          data.writeByte(ListMapType)
+          writeSeq(xs.toSeq)
         case None =>
           data.writeByte(NoneType)
         case Some(x: AnyRef) =>
@@ -63,6 +73,11 @@ object Serializer {
           data.writeByte(ByteArrayType)
           data.writeInt(bytes.size)
           data.write(bytes, 0, bytes.size)
+        case shapes: api.ShapeList =>
+          import collection.JavaConverters._
+          data.writeByte(ShapeListType)
+          data.writeUTF(shapes.kind.toString)
+          writeSeq(shapes.getShapes.asScala.map(_.toString))
         case _ =>
           data.writeByte(UnknownType)
           val name = x.getClass.toString
@@ -128,11 +143,35 @@ object Serializer {
           Some(readValue())
         case SeqType =>
           readValues()
+        case LogoListType =>
+          api.LogoList.fromVector(readValues())
+        case ListMapType =>
+          ListMap(readValues().asInstanceOf[Seq[(_, _)]]: _*)
         case ByteArrayType =>
           val size = data.readInt()
           val bytes = new Array[Byte](size)
           data.read(bytes, 0, size)
           bytes
+        case ShapeListType =>
+          val kind = data.readUTF()
+          val parser: Array[String] => java.util.List[api.Shape] =
+            kind match {
+              case "Turtle" =>
+                shape.VectorShape.parseShapes(_, api.Version.version)
+              case "Link" =>
+                shape.LinkShape.parseShapes(_, api.Version.version)
+            }
+          val result = new api.ShapeList(
+            kind match {
+              case "Turtle" =>
+                api.AgentKind.Turtle
+              case "Link" =>
+                api.AgentKind.Link
+            })
+          result.replaceShapes(
+            parser(
+              readValues().mkString("\n\n").split("\n")))
+          result
       }
     def readValues(): Vector[AnyRef] =
       (for(_ <- 0 until data.readInt())
@@ -157,7 +196,7 @@ object Serializer {
            changes = changes)
   }
 
-  private val agentKindFromInt: Int => Kind =
+  val agentKindFromInt: Int => Kind =
     Seq(Mirrorables.Observer,
         Mirrorables.Turtle,
         Mirrorables.Patch,
