@@ -95,7 +95,7 @@ object Mirrorables {
     val Seq(
       wvPatchesWithLabels,
       wvTurtleShapeList,
-      wvlinkShapeList,
+      wvLinkShapeList,
       wvPatchSize,
       wvWorldWidth,
       wvWorldHeight,
@@ -119,7 +119,7 @@ object Mirrorables {
     override val variables = Map(
       wvPatchesWithLabels -> Int.box(world.patchesWithLabels),
       wvTurtleShapeList -> world.turtleShapeList, // probably not good enough to just pass the shapelists like that...
-      wvlinkShapeList -> world.linkShapeList,
+      wvLinkShapeList -> world.linkShapeList,
       wvPatchSize -> Double.box(world.patchSize),
       wvWorldWidth -> Int.box(world.worldWidth),
       wvWorldHeight -> Int.box(world.worldHeight),
