@@ -141,6 +141,45 @@ class TestMirroring extends FunSuite {
     }
   }
 
+  test("two turtles, one link, rendering test") {
+    withWorkspace { (ws, mirrorables) =>
+      ws.command("random-seed 0")
+      ws.initForTesting(1)
+      ws.command("ask patch -1 -1 [ sprout 1 ]")
+      ws.command("ask patch 1 1 [ sprout 1 ]")
+      ws.command("ask turtles [ create-links-with other turtles]")
+      val (m0, u0) = diffs(Map(), mirrorables())
+      checkAllAgents(ws, m0)
+      val fakeWorld = new FakeWorld(m0)
+
+      val pico = new Pico
+      pico.add("org.nlogo.render.Renderer")
+      pico.addComponent(fakeWorld)
+      val renderer = pico.getComponent(classOf[api.RendererInterface])
+      renderer.resetCache(ws.patchSize)
+
+      val realChecksum =
+        Checksummer.calculateGraphicsChecksum(ws.renderer, ws)
+      val mirrorChecksum =
+        Checksummer.calculateGraphicsChecksum(renderer, ws)
+
+      def exportPNG(r: api.RendererInterface, suffix: String) = {
+        new java.io.File("tmp").mkdir()
+        val outputFile = "two turtles one link." + suffix + ".png"
+        val outputPath = new java.io.File("tmp/" + outputFile)
+        javax.imageio.ImageIO.write(r.exportView(ws), "png", outputPath)
+      }
+
+      if (mirrorChecksum != realChecksum) {
+        exportPNG(ws.renderer, "original")
+        exportPNG(renderer, "mirror")
+      }
+
+      expect(realChecksum) { mirrorChecksum }
+
+    }
+  }
+
   private val testSerializer = true
 
   def modelRenderingTest(path: String) {
@@ -184,48 +223,6 @@ class TestMirroring extends FunSuite {
     }
   }
 
-  //  test("slime") {
-  //    modelRenderingTest("models/Sample Models/Biology/Slime.nlogo")
-  //  }
-  //
-  //  test("wolf") {
-  //    modelRenderingTest("models/Sample Models/Biology/Wolf Sheep Predation.nlogo")
-  //  }
-  //
-  //  test("fireworks") {
-  //    modelRenderingTest("models/Sample Models/Art/Fireworks.nlogo")
-  //  }
-  //
-  //  test("team-assembly") {
-  //    modelRenderingTest("models/Sample Models/Networks/Team Assembly.nlogo")
-  //  }
-  //
-  //  test("preferential-attachment") {
-  //    modelRenderingTest("models/Sample Models/Networks/Preferential Attachment.nlogo")
-  //  }
-  //
-  //  test("network-example") {
-  //    modelRenderingTest("models/Code Examples/Network Example.nlogo")
-  //  }
-
-  //  test("small-worlds") {
-  //    // fails because "Nothing named USER-MESSAGE has been defined"
-  //    // how are we to handle these cases?
-  //    modelRenderingTest("models/Sample Models/Networks/Small Worlds.nlogo")
-  //  }
-
-  //  test("fire") {
-  //    modelRenderingTest("models/Sample Models/Earth Science/Fire.nlogo")
-  //  }
-  //
-  //  test("Echo model for testing turtle labels") {
-  //    modelRenderingTest("models/Sample Models/Biology/Evolution/Echo.nlogo")
-  //  }
-  //
-  //  test("Color Chart Example for testing patch labels") {
-  //    modelRenderingTest("models/Code Examples/Color Chart Example.nlogo")
-  //  }
-
   def allTestableModels = {
     def hasExclusion(fileName: String) = {
       val exclusions = Seq(
@@ -250,17 +247,13 @@ class TestMirroring extends FunSuite {
   }
 
   def modelsToTest = Seq(
-    "models/Code Examples/HSB and RGB Example.nlogo",
-    "models/Code Examples/Halo Example.nlogo",
-    "models/Code Examples/Perspective Demos/GasLab Gas in a Box (Perspective Demo).nlogo",
-    "models/Code Examples/Image Import Example.nlogo",
     "models/Sample Models/Networks/Diffusion on a Directed Network.nlogo",
     "models/Code Examples/Link Lattice Example.nlogo")
 
-//  modelsToTest.foreach { modelPath =>
-//    test("Mirroring: " + modelPath) {
-//      modelRenderingTest(modelPath)
-//    }
-//  }
+  modelsToTest.foreach { modelPath =>
+    test("Mirroring: " + modelPath) {
+      modelRenderingTest(modelPath)
+    }
+  }
 
 }

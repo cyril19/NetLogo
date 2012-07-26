@@ -118,17 +118,16 @@ class FakeWorld(state: State) extends api.World {
     override def isDirectedLink: Boolean = getBreed.isDirected
     override def x1: Double = end1.xcor
     override def y1: Double = end1.ycor
-    override def x2: Double = end2.xcor
-    override def y2: Double = end2.ycor
+    override def x2: Double = shortestPathX(end1.xcor, end2.xcor)
+    override def y2: Double = shortestPathY(end1.ycor, end2.ycor)
     override def midpointX: Double = vars(lvMidpointX).asInstanceOf[Double]
     override def midpointY: Double = vars(lvMidpointY).asInstanceOf[Double]
     override def getBreed: api.AgentSet = linkBreeds.getOrElse(vars(VAR_LBREED).asInstanceOf[String], links)
-    // maybe I should keep a map from id to agent somewhere? Not sure it's worth it, though...
-    override def end1 = turtles.agentSeq.find(_.id == vars(VAR_END1).asInstanceOf[Long]).get
-    override def end2 = turtles.agentSeq.find(_.id == vars(VAR_END2).asInstanceOf[Long]).get
+    override lazy val end1 = turtles.agentSeq.find(_.id == vars(VAR_END1).asInstanceOf[Long]).get
+    override lazy val end2 = turtles.agentSeq.find(_.id == vars(VAR_END2).asInstanceOf[Long]).get
     override def size: Double = vars(lvSize).asInstanceOf[Double]
     override def shape = vars(VAR_LSHAPE).asInstanceOf[String]
-    override def toString = id + " link " + end1.id + " " + end2.id // TODO: get breed name in there
+    override def toString = "link " + end1.id + " " + end2.id // TODO: get breed name in there
   }
 
   override val links = {
@@ -215,7 +214,6 @@ class FakeWorld(state: State) extends api.World {
 
   override lazy val observer: api.Observer = new FakeObserver(observerVars)
 
-  // unsupported
   def wrap(pos: Double, min: Double, max: Double): Double =
     // This is basically copied from org.nlogo.agent.Topology to avoid a dependency to the latter.
     // Maybe the Topology.wrap function should be made accessible from the api package. NP 2012-07-24 
@@ -225,6 +223,18 @@ class FakeWorld(state: State) extends api.World {
       val result = max - ((min - pos) % (max - min))
       if (result < max) result else min
     } else pos
+
+  // More ugly repetition to get around the Topology dependency:
+  def shortestPathX(x1: Double, x2: Double) =
+    if (wrappingAllowedInX) {
+      val xprime = if (x1 > x2) x2 + worldWidth else x2 - worldWidth
+      if (StrictMath.abs(x2 - x1) > StrictMath.abs(xprime - x1)) xprime else x2
+    } else x2
+  def shortestPathY(y1: Double, y2: Double) =
+    if (wrappingAllowedInY) {
+      val yprime = if (y1 > y2) y2 + worldHeight else y2 - worldHeight
+      if (StrictMath.abs(y2 - y1) > StrictMath.abs(yprime - y1)) yprime else y2
+    } else y2
 
   def ticks: Double = unsupported
   def getPatchAt(x: Double, y: Double): api.Patch = unsupported
