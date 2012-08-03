@@ -19,10 +19,6 @@
 // - note: if you run the script for the first time and it appears non-responsive, do not fear;
 //         wait at least a few minutes for it to try downloading the dependencies before panicking!
 
-// We're using Dispatch Reboot here, even though it's still in beta, instead of just using the old,
-// stable Dispatch.  It's not for any pragmatic reason -- just wanted to give the reboot version
-// a try. - ST 4/25/12
-
 /***
 scalaVersion := "2.9.2"
 
@@ -31,7 +27,7 @@ onLoadMessage := ""
 scalacOptions ++= Seq("-deprecation", "-unchecked", "-Xfatal-warnings")
 
 libraryDependencies ~= { seq =>
-    val vers = "0.9.0-beta2"
+    val vers = "0.9.0"
     seq ++ Seq("net.databinder.dispatch" %% "core" % vers,
                "net.liftweb" % "lift-json_2.9.1" % "2.4",
                "org.slf4j" % "slf4j-nop" % "1.6.0")

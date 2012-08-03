@@ -136,13 +136,13 @@ do
 done
 cd ..
 rm -f *.jar
-bin/sbt clean all
+./sbt clean all
 
 # remember version number
-export VERSION=`$JAVA -cp NetLogo.jar:$SCALA_JAR org.nlogo.headless.Main --version | $SED -e "s/NetLogo //"`
-export DATE=`$JAVA -cp NetLogo.jar:$SCALA_JAR org.nlogo.headless.Main --builddate`
+export VERSION=`$JAVA -cp target/NetLogo.jar:$SCALA_JAR org.nlogo.headless.Main --version | $SED -e "s/NetLogo //"`
+export DATE=`$JAVA -cp target/NetLogo.jar:$SCALA_JAR org.nlogo.headless.Main --builddate`
 echo $VERSION":" $DATE
-export COMPRESSEDVERSION=`$JAVA -cp NetLogo.jar:$SCALA_JAR org.nlogo.headless.Main --version | $SED -e "s/NetLogo //" | $SED -e "s/ //g"`
+export COMPRESSEDVERSION=`$JAVA -cp target/NetLogo.jar:$SCALA_JAR org.nlogo.headless.Main --version | $SED -e "s/NetLogo //" | $SED -e "s/ //g"`
 
 # make fresh staging area
 $RM -rf tmp/netlogo-$COMPRESSEDVERSION
@@ -153,8 +153,8 @@ cd tmp/netlogo-$COMPRESSEDVERSION
 $CP -rp ../../docs .
 $CP -p ../../dist/readme.txt .
 $CP -p ../../dist/netlogo_logging.xml .
-$CP -p ../../NetLogo.jar ../../HubNet.jar .
-$CP ../../NetLogoLite.jar .
+$CP -p ../../target/NetLogo.jar ../../target/HubNet.jar .
+$CP ../../target/NetLogoLite.jar .
 $PACK200 --modification-time=latest --effort=9 --strip-debug --no-keep-file-order --unknown-attribute=strip NetLogoLite.jar.pack.gz NetLogoLite.jar
 
 # fill lib directory
@@ -281,7 +281,7 @@ $PERL -0 -p -i -e 's|<title>.+?NetLogo User Manual.+?</title>|<title>NetLogo $EN
 ( cd ../..
   mv models models.tmp
   ln -s tmp/netlogo-$COMPRESSEDVERSION/models
-  bin/sbt model-index
+  ./sbt model-index
   rm models
   mv models.tmp models
 ) || exit 1
@@ -433,7 +433,7 @@ $CP -p ../dist/donate.png $COMPRESSEDVERSION
 $CP -p ../dist/os-*.gif $COMPRESSEDVERSION
 $CP -rp ../models/test/applet $COMPRESSEDVERSION
 $CP $COMPRESSEDVERSION/NetLogoLite.jar $COMPRESSEDVERSION/NetLogoLite.jar.pack.gz $COMPRESSEDVERSION/applet
-$CP ../HubNet.jar $COMPRESSEDVERSION/applet
+$CP ../target/HubNet.jar $COMPRESSEDVERSION/applet
 $CP -rp netlogo-$COMPRESSEDVERSION/extensions/{sound,matrix,table,bitmap,gis} $COMPRESSEDVERSION/applet
 $FIND $COMPRESSEDVERSION/applet \( -name .DS_Store -or -name .gitignore -or -path \*/.git \) -print0 \
   | $XARGS -0 $RM -rf
@@ -468,11 +468,11 @@ $FIND tmp/$COMPRESSEDVERSION \( -name .DS_Store -or -name .gitignore \) -print0 
 
 # done
 if [ $DO_RSYNC -eq 1 ]; then
-  $RSYNC -av --progress --delete tmp/$COMPRESSEDVERSION ccl.northwestern.edu:/usr/local/www/netlogo
+  $RSYNC -av --inplace --progress --delete tmp/$COMPRESSEDVERSION ccl.northwestern.edu:/usr/local/www/netlogo
 else
   echo
   echo "to upload to CCL server, do:"
-  echo "rsync -av --progress --delete tmp/$COMPRESSEDVERSION ccl.northwestern.edu:/usr/local/www/netlogo"
+  echo "rsync -av --inplace --progress --delete tmp/$COMPRESSEDVERSION ccl.northwestern.edu:/usr/local/www/netlogo"
 fi
 
 echo
