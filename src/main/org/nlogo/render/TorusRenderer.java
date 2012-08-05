@@ -163,7 +163,6 @@ public strictfp class TorusRenderer extends AbstractTopologyRenderer {
     double y1 = graphicsY(link.y1(), patchSize);
     double x2 = graphicsX(link.x2(), patchSize);
     double y2 = graphicsY(link.y2(), patchSize);
-
     int lineWidth = (int) StrictMath.max(1, (lineThickness * patchSize));
 
     g.setStroke(lineWidth);
