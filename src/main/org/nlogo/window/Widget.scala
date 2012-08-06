@@ -5,7 +5,7 @@ package org.nlogo.window
 import java.awt.{List=>AWTList, _}
 import event.{MouseAdapter, MouseEvent, MouseListener}
 import javax.swing.border.Border
-import org.nlogo.window.Events.{WidgetRemovedEvent, WidgetEditedEvent, WidgetAddedEvent}
+import Events.{WidgetRemovedEvent, WidgetEditedEvent, WidgetAddedEvent}
 import org.nlogo.api.{MultiErrorHandler, SingleErrorHandler}
 import javax.swing.{JPanel, JMenuItem, JPopupMenu}
 
@@ -34,7 +34,7 @@ abstract class Widget extends JPanel {
   def copyable = true // only OutputWidget and ViewWidget are not copyable
   def constrainDrag(newBounds: Rectangle, originalBounds: Rectangle, mouseMode: MouseMode): Rectangle = newBounds
   def isZoomed = if (findWidgetContainer != null) findWidgetContainer.isZoomed else false
-  def load(strings: Array[String]): Object
+  def load(strings: Seq[String]): Object
   def sourceOffset = 0
   def hasContextMenuInApplet = false
   def getUnzoomedPreferredSize: Dimension = getPreferredSize(originalFont)
@@ -140,7 +140,7 @@ abstract class Widget extends JPanel {
 
   override def removeNotify: Unit = {
     if (java.awt.EventQueue.isDispatchThread) {
-      org.nlogo.window.Event.rehash()
+      Event.rehash()
       new WidgetRemovedEvent(this).raise(this)
     }
     super.removeNotify()
@@ -149,7 +149,7 @@ abstract class Widget extends JPanel {
   override def addNotify: Unit = {
     super.addNotify
     if (originalFont == null) { originalFont = getFont }
-    org.nlogo.window.Event.rehash()
+    Event.rehash()
     new WidgetAddedEvent(this).raise(this)
   }
 }

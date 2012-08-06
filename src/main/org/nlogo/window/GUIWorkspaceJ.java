@@ -26,24 +26,23 @@ import org.nlogo.nvm.Workspace;
 
 import java.util.HashMap;
 
-public abstract strictfp class GUIWorkspace // can't be both abstract and strictfp
+public abstract strictfp class GUIWorkspaceJ
     extends org.nlogo.workspace.AbstractWorkspaceScala
     implements
-    org.nlogo.window.Event.LinkChild,
-    org.nlogo.window.Events.AddJobEvent.Handler,
-    org.nlogo.window.Events.AfterLoadEvent.Handler,
-    org.nlogo.window.Events.BeforeLoadEvent.Handler,
-    org.nlogo.window.Events.ExportPlotEvent.Handler,
-    org.nlogo.window.Events.JobStoppingEvent.Handler,
-    org.nlogo.window.Events.LoadSectionEvent.Handler,
-    org.nlogo.window.Events.RemoveAllJobsEvent.Handler,
-    org.nlogo.window.Events.RemoveJobEvent.Handler,
-    org.nlogo.window.Events.AddSliderConstraintEvent.Handler,
-    org.nlogo.window.Events.RemoveConstraintEvent.Handler,
-    org.nlogo.window.Events.AddBooleanConstraintEvent.Handler,
-    org.nlogo.window.Events.AddChooserConstraintEvent.Handler,
-    org.nlogo.window.Events.AddInputBoxConstraintEvent.Handler,
-    org.nlogo.window.Events.CompiledEvent.Handler,
+    Event.LinkChild,
+    Events.AddJobEventHandler,
+    Events.AfterLoadEventHandler,
+    Events.BeforeLoadEventHandler,
+    Events.ExportPlotEventHandler,
+    Events.JobStoppingEventHandler,
+    Events.RemoveAllJobsEventHandler,
+    Events.RemoveJobEventHandler,
+    Events.AddSliderConstraintEventHandler,
+    Events.RemoveConstraintEventHandler,
+    Events.AddBooleanConstraintEventHandler,
+    Events.AddChooserConstraintEventHandler,
+    Events.AddInputBoxConstraintEventHandler,
+    Events.CompiledEventHandler,
     org.nlogo.api.TrailDrawerInterface,
     org.nlogo.api.DrawingInterface {
 
@@ -62,17 +61,17 @@ public abstract strictfp class GUIWorkspace // can't be both abstract and strict
   // for grid snap
   private boolean snapOn = false;
 
-  public GUIWorkspace(final org.nlogo.agent.World world,
-                      KioskLevel kioskLevel, java.awt.Frame frame,
-                      java.awt.Component linkParent,
-                      NetLogoListenerManager listenerManager) {
+  public GUIWorkspaceJ(final org.nlogo.agent.World world,
+                       KioskLevel kioskLevel, java.awt.Frame frame,
+                       java.awt.Component linkParent,
+                       NetLogoListenerManager listenerManager) {
     super(world);
     this.kioskLevel = kioskLevel;
     this.frame = frame;
     this.linkParent = linkParent;
     this.listenerManager = listenerManager;
 
-    viewWidget = new ViewWidget(this);
+    viewWidget = new ViewWidget((GUIWorkspace) this);
     view = viewWidget.view;
     viewManager.setPrimary(view);
 
@@ -227,22 +226,22 @@ public abstract strictfp class GUIWorkspace // can't be both abstract and strict
   }
 
   public void waitFor(Runnable runnable) {
-    ThreadUtils.waitFor(this, runnable);
+    ThreadUtils.waitFor((GUIWorkspace) this, runnable);
   }
 
   public void waitFor(CommandRunnable runnable)
       throws LogoException {
-    ThreadUtils.waitFor(this, runnable);
+    ThreadUtils.waitFor((GUIWorkspace) this, runnable);
   }
 
   public <T> T waitForResult(ReporterRunnable<T> runnable)
       throws LogoException {
-    return ThreadUtils.waitForResult(this, runnable);
+    return ThreadUtils.waitForResult((GUIWorkspace) this, runnable);
   }
 
   public void waitForQueuedEvents()
       throws LogoException {
-    ThreadUtils.waitForQueuedEvents(this);
+    ThreadUtils.waitForQueuedEvents((GUIWorkspace) this);
   }
 
   /// Event.LinkChild stuff
@@ -318,7 +317,7 @@ public abstract strictfp class GUIWorkspace // can't be both abstract and strict
   }
 
   public void patchesCreatedNotify() {
-    new org.nlogo.window.Events.PatchesCreatedEvent().raise(this);
+    new Events.PatchesCreatedEvent().raise(this);
   }
 
   public java.awt.Frame getFrame() {
@@ -349,8 +348,8 @@ public abstract strictfp class GUIWorkspace // can't be both abstract and strict
       org.nlogo.awt.EventQueue.invokeAndWait
           (new Runnable() {
             public void run() {
-              new org.nlogo.window.Events.OpenModelEvent(path)
-                  .raise(GUIWorkspace.this);
+              new Events.OpenModelEvent(path)
+                  .raise(GUIWorkspaceJ.this);
             }
           });
     } catch (InterruptedException ex) {
@@ -363,28 +362,6 @@ public abstract strictfp class GUIWorkspace // can't be both abstract and strict
   public void openString(String modelContents) {
     throw new UnsupportedOperationException();
   }
-
-  // called from the job thread
-  public void reload() {
-    new org.nlogo.window.Events.AppEvent
-        (AppEventType.RELOAD, new Object[]{})
-        .raiseLater(this);
-  }
-
-  // called from the job thread
-  @Override
-  public void magicOpen(String name) {
-    new org.nlogo.window.Events.AppEvent
-        (AppEventType.MAGIC_OPEN, new Object[]{name})
-        .raiseLater(this);
-  }
-
-  // called from the job thread
-  @Override
-  public void changeLanguage() {
-    new org.nlogo.window.Events.AppEvent(AppEventType.CHANGE_LANGUAGE, new Object[]{}).raiseLater(this);
-  }
-
 
   /// painting
 
@@ -479,7 +456,7 @@ public abstract strictfp class GUIWorkspace // can't be both abstract and strict
         // don't block the event thread during a smoothing pause
         // or the UI will go sluggish (issue #1263) - ST 9/21/11
         while(!updateManager().isDoneSmoothing()) {
-          ThreadUtils.waitForQueuedEvents(this);
+          ThreadUtils.waitForQueuedEvents((GUIWorkspace) this);
         }
       } catch (org.nlogo.nvm.HaltException ex) {
         org.nlogo.util.Exceptions.ignore(ex);
@@ -497,8 +474,8 @@ public abstract strictfp class GUIWorkspace // can't be both abstract and strict
   private final Runnable updateRunner =
       new Runnable() {
         public void run() {
-          new org.nlogo.window.Events.PeriodicUpdateEvent()
-              .raise(GUIWorkspace.this);
+          new Events.PeriodicUpdateEvent()
+              .raise(GUIWorkspaceJ.this);
         }
       };
 
@@ -511,7 +488,7 @@ public abstract strictfp class GUIWorkspace // can't be both abstract and strict
   // this is called on the job thread - ST 9/30/03
   public void periodicUpdate() {
     if (periodicUpdatesEnabled) {
-      ThreadUtils.waitFor(this, updateRunner);
+      ThreadUtils.waitFor((GUIWorkspace) this, updateRunner);
     }
   }
 
@@ -532,7 +509,7 @@ public abstract strictfp class GUIWorkspace // can't be both abstract and strict
   // whole UI is up-to-date before proceeding - ST 8/30/07, 3/3/11
   public void updateUI() {
     // this makes the tick counter et al update
-    ThreadUtils.waitFor(this, updateRunner);
+    ThreadUtils.waitFor((GUIWorkspace) this, updateRunner);
     // resetting first ensures that if we are allowed to update the view, we will
     updateManager().reset();
     requestDisplayUpdate(true);
@@ -570,7 +547,7 @@ public abstract strictfp class GUIWorkspace // can't be both abstract and strict
       getFrame(), "Halting...",
       new Runnable() {
         public void run() {
-          GUIWorkspace.super.halt();
+          GUIWorkspaceJ.super.halt();
           view.dirty();
           view.repaint();
         }});
@@ -581,7 +558,7 @@ public abstract strictfp class GUIWorkspace // can't be both abstract and strict
     viewManager.shapeChanged(shape);
   }
 
-  public void handle(org.nlogo.window.Events.AfterLoadEvent e) {
+  public void handle(Events.AfterLoadEvent e) {
     setPeriodicUpdatesEnabled(true);
     world.observer().resetPerspective();
     updateManager().reset();
@@ -647,16 +624,16 @@ public abstract strictfp class GUIWorkspace // can't be both abstract and strict
 
   // called on job thread, but without world lock - ST 9/12/07
   public void ownerFinished(org.nlogo.api.JobOwner owner) {
-    new org.nlogo.window.Events.JobRemovedEvent(owner).raiseLater(this);
+    new Events.JobRemovedEvent(owner).raiseLater(this);
     if (owner.ownsPrimaryJobs()) {
       updateManager().reset();
       updateDisplay(false);
     }
   }
 
-  public void handle(org.nlogo.window.Events.AddJobEvent e) {
-    org.nlogo.api.JobOwner owner = e.owner;
-    AgentSet agents = e.agents;
+  public void handle(Events.AddJobEvent e) {
+    org.nlogo.api.JobOwner owner = e.owner();
+    AgentSet agents = e.agents();
     if (owner instanceof JobWidget &&
         agents == null) {
       JobWidget widget = (JobWidget) owner;
@@ -665,18 +642,18 @@ public abstract strictfp class GUIWorkspace // can't be both abstract and strict
       }
     }
     if (owner.ownsPrimaryJobs()) {
-      if (e.procedure != null) {
-        jobManager.addJob(owner, agents, e.procedure);
+      if (e.procedure() != null) {
+        jobManager.addJob(owner, agents, e.procedure());
       } else {
-        new org.nlogo.window.Events.JobRemovedEvent(owner).raiseLater(this);
+        new Events.JobRemovedEvent(owner).raiseLater(this);
       }
     } else {
-      jobManager.addSecondaryJob(owner, agents, e.procedure);
+      jobManager.addSecondaryJob(owner, agents, e.procedure());
     }
   }
 
-  public void handle(org.nlogo.window.Events.RemoveJobEvent e) {
-    org.nlogo.api.JobOwner owner = e.owner;
+  public void handle(Events.RemoveJobEvent e) {
+    org.nlogo.api.JobOwner owner = e.owner();
     if (owner.ownsPrimaryJobs()) {
       jobManager.finishJobs(owner);
     } else {
@@ -684,73 +661,73 @@ public abstract strictfp class GUIWorkspace // can't be both abstract and strict
     }
   }
 
-  public void handle(org.nlogo.window.Events.JobStoppingEvent e) {
-    jobManager.stoppingJobs(e.owner);
+  public void handle(Events.JobStoppingEvent e) {
+    jobManager.stoppingJobs(e.owner());
   }
 
-  public void handle(org.nlogo.window.Events.RemoveAllJobsEvent e) {
+  public void handle(Events.RemoveAllJobsEvent e) {
     jobManager.haltSecondary();
     jobManager.haltPrimary();
   }
 
-  public void handle(org.nlogo.window.Events.AddBooleanConstraintEvent e) {
+  public void handle(Events.AddBooleanConstraintEvent e) {
     BooleanConstraint con =
-        new BooleanConstraint(e.defaultValue);
+      new BooleanConstraint(e.defaultValue());
 
     // now we set the constraint in the observer, so that it is enforced.
-    int index = world.observerOwnsIndexOf(e.varname.toUpperCase());
+    int index = world.observerOwnsIndexOf(e.varname().toUpperCase());
 
     if (index != -1) {
       world.observer().variableConstraint(index, con);
     }
   }
 
-  public void handle(org.nlogo.window.Events.AddInputBoxConstraintEvent e) {
+  public void handle(Events.AddInputBoxConstraintEvent e) {
     // now we set the constraint in the observer, so that it is enforced.
-    int index = world.observerOwnsIndexOf(e.varname.toUpperCase());
+    int index = world.observerOwnsIndexOf(e.varname().toUpperCase());
 
     if (index != -1) {
-      world.observer().variableConstraint(index, e.constraint);
+      world.observer().variableConstraint(index, e.constraint());
     }
   }
 
-  public void handle(org.nlogo.window.Events.AddChooserConstraintEvent e) {
+  public void handle(Events.AddChooserConstraintEvent e) {
     // now we set the constraint in the observer, so that it is enforced.
-    int index = world.observerOwnsIndexOf(e.varname.toUpperCase());
+    int index = world.observerOwnsIndexOf(e.varname().toUpperCase());
 
     if (index != -1) {
-      world.observer().variableConstraint(index, e.constraint);
+      world.observer().variableConstraint(index, e.constraint());
     }
   }
 
 
-  public void handle(org.nlogo.window.Events.AddSliderConstraintEvent e) {
+  public void handle(Events.AddSliderConstraintEvent e) {
     try {
       SliderConstraint con = SliderConstraint.makeSliderConstraint
-          (world.observer(), e.minSpec, e.maxSpec, e.incSpec, e.value, e.slider.name(), this);
-      e.slider.removeAllErrors();
-      e.slider.setSliderConstraint(con);
+          (world.observer(), e.minSpec(), e.maxSpec(), e.incSpec(), e.value(), e.slider().name(), this);
+      e.slider().removeAllErrors();
+      e.slider().setSliderConstraint(con);
       // now we set the constraint in the observer, so that it is enforced.
-      int index = world.observerOwnsIndexOf(e.varname.toUpperCase());
+      int index = world.observerOwnsIndexOf(e.varname().toUpperCase());
       if (index != -1) {
         world.observer().variableConstraint(index, con);
       }
     } catch (SliderConstraint.ConstraintExceptionHolder ex) {
       for (SliderConstraint.SliderConstraintException cce :
              scala.collection.JavaConversions.asJavaIterable(ex.getErrors())) {
-        e.slider.setConstraintError(cce.spec().fieldName(), cce);
+        e.slider().setConstraintError(cce.spec().fieldName(), cce);
       }
     }
   }
 
-  public void handle(org.nlogo.window.Events.RemoveConstraintEvent e) {
-    int index = world.observerOwnsIndexOf(e.varname.toUpperCase());
+  public void handle(Events.RemoveConstraintEvent e) {
+    int index = world.observerOwnsIndexOf(e.varname().toUpperCase());
     if (index != -1) {
       world.observer().variableConstraint(index, null);
     }
   }
 
-  public void handle(org.nlogo.window.Events.CompiledEvent e) {
+  public void handle(Events.CompiledEvent e) {
     codeBits.clear();
   }
 
@@ -765,17 +742,17 @@ public abstract strictfp class GUIWorkspace // can't be both abstract and strict
   /// output
 
   public void clearOutput() {
-    final org.nlogo.window.Events.OutputEvent event =
-        new org.nlogo.window.Events.OutputEvent
+    final Events.OutputEvent event =
+        new Events.OutputEvent
             (true, null, false, false);
 
     // This method can be called when we are ALREADY in the AWT
     // event thread, so check before we block on it. -- CLB 07/18/05
     if (!java.awt.EventQueue.isDispatchThread()) {
       ThreadUtils.waitFor
-          (this, new Runnable() {
+          ((GUIWorkspace) this, new Runnable() {
             public void run() {
-              event.raise(GUIWorkspace.this);
+              event.raise((GUIWorkspace) GUIWorkspaceJ.this);
             }
           });
     } else {
@@ -786,17 +763,17 @@ public abstract strictfp class GUIWorkspace // can't be both abstract and strict
   @Override
   protected void sendOutput(final org.nlogo.agent.OutputObject oo,
                             final boolean toOutputArea) {
-    final org.nlogo.window.Events.OutputEvent event =
-        new org.nlogo.window.Events.OutputEvent
+    final Events.OutputEvent event =
+        new Events.OutputEvent
             (false, oo, false, !toOutputArea);
 
     // This method can be called when we are ALREADY in the AWT
     // event thread, so check before we block on it. -- CLB 07/18/05
     if (!java.awt.EventQueue.isDispatchThread()) {
       ThreadUtils.waitFor
-          (this, new Runnable() {
+          ((GUIWorkspace) this, new Runnable() {
             public void run() {
-              event.raise(GUIWorkspace.this);
+              event.raise((GUIWorkspace) GUIWorkspaceJ.this);
             }
           });
     } else {
@@ -875,27 +852,8 @@ public abstract strictfp class GUIWorkspace // can't be both abstract and strict
     }
   }
 
-  public void exportInterface(String filename)
-      throws java.io.IOException {
-    // there's a form of ImageIO.write that just takes a filename, but
-    // if we use that when the filename is invalid (e.g. refers to
-    // a directory that doesn't exist), we get an IllegalArgumentException
-    // instead of an IOException, so we make our own OutputStream
-    // so we get the proper exceptions. - ST 8/19/03, 11/26/03
-    java.io.FileOutputStream stream =
-        new java.io.FileOutputStream(new java.io.File(filename));
-    java.io.IOException[] exceptionBox = new java.io.IOException[1];
-    new org.nlogo.window.Events.ExportInterfaceEvent(stream, exceptionBox)
-        .raise(this);
-    stream.close();
-    if (exceptionBox[0] != null) {
-      throw exceptionBox[0];
-    }
-  }
-
-
   public void exportOutput(String filename) {
-    new org.nlogo.window.Events.ExportOutputEvent(filename)
+    new Events.ExportOutputEvent(filename)
         .raise(this);
   }
 
@@ -906,20 +864,20 @@ public abstract strictfp class GUIWorkspace // can't be both abstract and strict
 
   @Override
   public void exportOutputAreaToCSV(java.io.PrintWriter writer) {
-    new org.nlogo.window.Events.ExportWorldEvent(writer)
-        .raise(GUIWorkspace.this);
+    new Events.ExportWorldEvent(writer)
+        .raise((GUIWorkspace) GUIWorkspaceJ.this);
   }
 
   public void exportPlot(PlotWidgetExportType whichPlots, org.nlogo.plot.Plot plot,
                          String filename) {
-    new org.nlogo.window.Events.ExportPlotEvent
+    new Events.ExportPlotEvent
         (whichPlots, plot, filename)
         .raise(this);
   }
 
 
-  public void handle(org.nlogo.window.Events.ExportPlotEvent e) {
-    if (e.whichPlots == PlotWidgetExportType.ALL) {
+  public void handle(Events.ExportPlotEvent e) {
+    if (e.whichPlots() == PlotWidgetExportType.ALL) {
       if (plotManager().getPlotNames().length == 0) {
         org.nlogo.swing.OptionDialog.show
             (getFrame(), "Export Plot", "There are no plots to export.",
@@ -927,22 +885,22 @@ public abstract strictfp class GUIWorkspace // can't be both abstract and strict
         return;
       }
       try {
-        super.exportAllPlots(e.filename);
+        super.exportAllPlots(e.filename());
       } catch (java.io.IOException ex) {
-        String message = "Export of all plots to" + e.filename + " failed: " + ex.getMessage();
+        String message = "Export of all plots to" + e.filename() + " failed: " + ex.getMessage();
         String[] options = {I18N.guiJ().get("common.buttons.ok")};
         org.nlogo.swing.OptionDialog.show(getFrame(), "Export Plot Failed", message, options);
       }
     } else {
-      org.nlogo.plot.Plot plot = e.plot;
+      org.nlogo.plot.Plot plot = e.target();
       if (plot == null) {
         plot = choosePlot(getFrame());
       }
       if (plot != null) {
         try {
-          super.exportPlot(plot.name(), e.filename);
+          super.exportPlot(plot.name(), e.filename());
         } catch (java.io.IOException ex) {
-          String message = "Export of " + plot.name() + " plot to " + e.filename + " failed: " + ex.getMessage();
+          String message = "Export of " + plot.name() + " plot to " + e.filename() + " failed: " + ex.getMessage();
           String[] options = {I18N.guiJ().get("common.buttons.ok")};
           org.nlogo.swing.OptionDialog.show(getFrame(), "Export Plot Failed", message, options);
         }
@@ -1010,7 +968,7 @@ public abstract strictfp class GUIWorkspace // can't be both abstract and strict
       } else {
         posAndLength = instruction.getPositionAndLength();
       }
-      new org.nlogo.window.Events.RuntimeErrorEvent
+      new Events.RuntimeErrorEvent
           (owner, sourceOwner, posAndLength[0], posAndLength[1])
           .raiseLater(this);
     }
@@ -1044,10 +1002,10 @@ public abstract strictfp class GUIWorkspace // can't be both abstract and strict
    * model name needs to be available for setting titles and so on by the
    * time we handle LoadBeginEvent.
    */
-  public void handle(org.nlogo.window.Events.BeforeLoadEvent e) {
+  public void handle(Events.BeforeLoadEvent e) {
     setPeriodicUpdatesEnabled(false);
-    setModelPath(e.modelPath);
-    setModelType(e.modelType);
+    setModelPath(e.modelPath());
+    setModelType(e.modelType());
     jobManager.haltSecondary();
     jobManager.haltPrimary();
     getExtensionManager().reset();
@@ -1056,7 +1014,7 @@ public abstract strictfp class GUIWorkspace // can't be both abstract and strict
     clearDrawing();
     viewManager.resetMouseCors();
     displaySwitchOn(true);
-    setProcedures(new HashMap<String, Procedure>());
+    procedures_$eq(new scala.collection.immutable.ListMap<String, Procedure>());
     lastTicksListenersHeard = -1.0;
     plotManager().forgetAll();
   }
@@ -1070,21 +1028,6 @@ public abstract strictfp class GUIWorkspace // can't be both abstract and strict
   public void modelSaved(String newModelPath) {
     setModelPath(newModelPath);
     setModelType(ModelTypeJ.NORMAL());
-  }
-
-  public void handle(org.nlogo.window.Events.LoadSectionEvent e) {
-    if (e.section == ModelSectionJ.PREVIEW_COMMANDS() &&
-        e.text.trim().length() > 0) {
-      previewCommands_$eq(e.text);
-    }
-    if (e.section == ModelSectionJ.SHAPES()) {
-      world.turtleShapeList().replaceShapes
-          (org.nlogo.shape.VectorShape.parseShapes(e.lines, e.version));
-    }
-    if (e.section == ModelSectionJ.LINK_SHAPES()) {
-      world.linkShapeList().replaceShapes
-          (org.nlogo.shape.LinkShape.parseShapes(e.lines, e.version));
-    }
   }
 
   public void snapOn(boolean snapOn) {

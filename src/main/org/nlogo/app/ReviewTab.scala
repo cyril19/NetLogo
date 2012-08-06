@@ -3,13 +3,11 @@ package org.nlogo.app
 import javax.swing._
 import javax.swing.event.{ ChangeEvent, ChangeListener }
 import java.awt.image.BufferedImage
-import org.nlogo.{ api, mirror, nvm }
+import org.nlogo.{ api, mirror, nvm, window }
 import mirror.{ Mirroring, Mirrorables, Serializer }
-import org.nlogo.window.GUIWorkspace
-import org.nlogo.window.Events.BeforeLoadEvent
 
-class ReviewTab(ws: GUIWorkspace) extends JPanel
-with BeforeLoadEvent.Handler {
+class ReviewTab(ws: window.GUIWorkspace) extends JPanel
+with window.Events.BeforeLoadEventHandler {
 
   type Run = Seq[Array[Byte]]
 
@@ -112,7 +110,7 @@ with BeforeLoadEvent.Handler {
   add(InterfacePanel, java.awt.BorderLayout.CENTER)
   add(Scrubber, java.awt.BorderLayout.SOUTH)
 
-  override def handle(e: BeforeLoadEvent) {
+  override def handle(e: window.Events.BeforeLoadEvent) {
     reset()
   }
 

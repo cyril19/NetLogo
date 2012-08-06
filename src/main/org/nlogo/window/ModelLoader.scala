@@ -4,7 +4,7 @@ package org.nlogo.window
 
 import org.nlogo.swing.BrowserLauncher
 import java.awt.Container
-import org.nlogo.window.Events._
+import Events._
 import org.nlogo.api.{I18N, ModelType, ModelReader, ModelSection, Version}
 
 object ModelLoader {
@@ -12,7 +12,7 @@ object ModelLoader {
 
   @throws(classOf[InvalidVersionException])
   def load(linkParent: Container, modelPath: String,
-           modelType: ModelType, map: java.util.Map[ModelSection, Array[String]]) {
+           modelType: ModelType, map: java.util.Map[ModelSection, Seq[String]]) {
     Loader(linkParent).loadHelper(modelPath, modelType, map)
   }
   @throws(classOf[InvalidVersionException])
@@ -20,11 +20,11 @@ object ModelLoader {
     Loader(linkParent).loadHelper(modelPath, modelType, ModelReader.parseModel(source))
   }
 
-  private case class Loader(linkParent: Container) extends org.nlogo.window.Event.LinkChild {
+  private case class Loader(linkParent: Container) extends Event.LinkChild {
     def getLinkParent = linkParent
 
     @throws(classOf[InvalidVersionException])
-    def loadHelper(modelPath: String, modelType: ModelType, map: java.util.Map[ModelSection, Array[String]]) {
+    def loadHelper(modelPath: String, modelType: ModelType, map: java.util.Map[ModelSection, Seq[String]]) {
       if (map == null) throw new InvalidVersionException()
       val version = ModelReader.parseVersion(map)
       if (version == null || !version.startsWith("NetLogo")) throw new InvalidVersionException()
@@ -81,8 +81,10 @@ object ModelLoader {
             // so the default shapes must be loaded -- or maybe it's a model (such as the
             // default model) that was hand-edited to have no shapes in it, so it always gets
             // the default shapes when opened. - ST 9/2/03
-            case (ModelSection.TurtleShapes, 0) => ModelReader.defaultShapes
-            case (ModelSection.LinkShapes, 0) => ModelReader.defaultLinkShapes
+            case (ModelSection.TurtleShapes, 0) =>
+              ModelReader.defaultShapes
+            case (ModelSection.LinkShapes, 0) =>
+              ModelReader.defaultLinkShapes
             case _ => map.get(section)
           }
           new LoadSectionEvent(version, section, lines, lines.mkString("\n"))

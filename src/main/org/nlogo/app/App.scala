@@ -176,16 +176,16 @@ object App{
   // TODO: lots of duplication here...
   private class ShapeSectionReader(section: ModelSection) extends org.nlogo.shape.ModelSectionReader {
     @throws(classOf[java.io.IOException])
-    def read(path: String) = {
+    def read(path: String): Array[String] = {
       val map = ModelReader.parseModel(FileIO.file2String(path))
       if (map == null ||
               map.get(ModelSection.Version) == null ||
               map.get(ModelSection.Version).length == 0 ||
               !ModelReader.parseVersion(map).startsWith("NetLogo")) {
         // not a valid model file
-        Array.empty[String]
+        Array()
       }
-      else map.get(section)
+      else map.get(section).toArray
     }
 
     @throws(classOf[java.io.IOException])
@@ -206,12 +206,12 @@ object App{
 class App extends
     org.nlogo.window.Event.LinkChild with
     org.nlogo.util.Exceptions.Handler with
-    AppEvent.Handler with
-    BeforeLoadEvent.Handler with
-    LoadBeginEvent.Handler with
-    LoadEndEvent.Handler with
-    ModelSavedEvent.Handler with
-    Events.SwitchedTabsEvent.Handler with
+    AppEventHandler with
+    BeforeLoadEventHandler with
+    LoadBeginEventHandler with
+    LoadEndEventHandler with
+    ModelSavedEventHandler with
+    Events.SwitchedTabsEventHandler with
     Controllable {
 
   import App.{pico, commandLineMagic, commandLineModel, commandLineURL, commandLineModelIsLaunch}
@@ -261,7 +261,7 @@ class App extends
 
     val world = new World()
     pico.addComponent(world)
-    _workspace = new GUIWorkspace(world, GUIWorkspace.KioskLevel.NONE,
+    _workspace = new GUIWorkspace(world, GUIWorkspaceJ.KioskLevel.NONE,
                                   frame, frame, listenerManager) {
       val compiler = pico.getComponent(classOf[CompilerInterface])
       // lazy to avoid initialization order snafu - ST 3/1/11
@@ -337,7 +337,7 @@ class App extends
 
     if(! System.getProperty("os.name").startsWith("Mac")){ org.nlogo.awt.Positioning.center(frame, null) }
 
-    org.nlogo.app.FindDialog.init(frame)
+    FindDialog.init(frame)
 
     Splash.endSplash()
     frame.setVisible(true)
@@ -389,11 +389,11 @@ class App extends
   /**
    * Internal use only.
    */
-  def handle(e:AppEvent){
+  def handle(e: AppEvent) {
     import AppEventType._
-    e.`type` match {
+    e.eventType match {
       case RELOAD => reload()
-      case MAGIC_OPEN => magicOpen(e.args(0).toString)
+      case MAGIC_OPEN => magicOpen(e.args.head.toString)
       case CHANGE_LANGUAGE => changeLanguage()
       case _ =>
     }
@@ -574,10 +574,13 @@ class App extends
    * @param path the path (absolute or relative) of the NetLogo model to open.
    */
   @throws(classOf[java.io.IOException])
-  def open(path:String)  { dispatchThreadOrBust(fileMenu.openFromPath(path, ModelType.Normal)) }
-
+  def open(path: String) {
+    dispatchThreadOrBust(fileMenu.openFromPath(path, ModelType.Normal))
+  }
   @throws(classOf[java.io.IOException])
-  def libraryOpen(path:String){ dispatchThreadOrBust(path, ModelType.Library) }
+  def libraryOpen(path: String) {
+    dispatchThreadOrBust(fileMenu.openFromPath(path, ModelType.Library))
+  }
 
   /**
    * Opens a model stored in a string.
@@ -708,8 +711,10 @@ class App extends
    * in the same (undocumented) format found in a saved model.
    * @param text the widget specification
    */
-  def makeWidget(text:String){
-    dispatchThreadOrBust( tabs.interfaceTab.getInterfacePanel.loadWidget(text.split("\n").toArray, Version.version) )
+  def makeWidget(text: String){
+    dispatchThreadOrBust(
+      tabs.interfaceTab.getInterfacePanel.loadWidget(
+        text.split("\n").toSeq, Version.version) )
   }
 
   /// helpers for controlling methods

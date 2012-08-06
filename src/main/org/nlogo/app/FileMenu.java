@@ -22,7 +22,7 @@ import java.util.Map;
 
 public strictfp class FileMenu
     extends org.nlogo.swing.Menu
-    implements org.nlogo.window.Events.OpenModelEvent.Handler {
+    implements org.nlogo.window.Events.OpenModelEventHandler {
 
   private final App app;
   private final ModelSaver modelSaver;
@@ -529,7 +529,7 @@ public strictfp class FileMenu
 
   public void handle(org.nlogo.window.Events.OpenModelEvent e) {
     try {
-      openFromPath(e.path, ModelTypeJ.LIBRARY());
+      openFromPath(e.path(), ModelTypeJ.LIBRARY());
     } catch (java.io.IOException ex) {
       throw new IllegalStateException(ex);
     }
@@ -571,9 +571,9 @@ public strictfp class FileMenu
                       String message, ModelType modelType)
       throws UserCancelException {
     // map elements are { source, info, resources, version }
-    Map<ModelSection, String[]> map =
+    Map<ModelSection, scala.collection.Seq<String>> map =
         ModelReader.parseModel(source);
-    if (map == null || map.get(ModelSectionJ.VERSION()).length == 0) {
+    if (map == null || map.get(ModelSectionJ.VERSION()).isEmpty()) {
       notifyUserNotValidFile();
     }
     String version = org.nlogo.api.ModelReader.parseVersion(map);
@@ -589,7 +589,7 @@ public strictfp class FileMenu
 
   private boolean firstLoad = true;
 
-  private void openFromMap(final Map<ModelSection, String[]> map,
+  private void openFromMap(final Map<ModelSection, scala.collection.Seq<String>> map,
                            final String path, String message,
                            final ModelType modelType) {
     try {

@@ -73,7 +73,7 @@ object ButtonWidget {
 }
 class ButtonWidget(random:MersenneTwisterFast) extends JobWidget(random)
         with Editable with MouseListener with MouseMotionListener
-        with Events.JobRemovedEvent.Handler with Events.TickStateChangeEvent.Handler {
+        with Events.JobRemovedEventHandler with Events.TickStateChangeEventHandler {
 
   import ButtonWidget._
 
@@ -445,7 +445,7 @@ class ButtonWidget(random:MersenneTwisterFast) extends JobWidget(random)
     s.toString
   }
 
-  override def load(strings:Array[String]) = {
+  override def load(strings: Seq[String]) = {
     forever = strings(7) == "T"
     // ButtonType handles converting the saved button type name into a ButtonType object.
     if (10 < strings.length) buttonType = ButtonType(strings(10).toLowerCase)

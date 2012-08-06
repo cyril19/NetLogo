@@ -6,7 +6,7 @@ import org.nlogo.swing.RichJMenuItem
 import org.nlogo.api.{I18N, Editable}
 
 class OutputWidget extends SingleErrorWidget with CommandCenterInterface with
-  org.nlogo.window.Events.ExportWorldEvent.Handler with Editable {
+  Events.ExportWorldEventHandler with Editable {
 
   setLayout(new java.awt.BorderLayout())
   setBorder(widgetBorder)
@@ -47,7 +47,7 @@ class OutputWidget extends SingleErrorWidget with CommandCenterInterface with
   // these are copied from the TrailDrawer, as is this code for breaking up
   // possible very long text into multiple cells and rows for Excel
   // CLB 7/15/05
-  def handle(e:org.nlogo.window.Events.ExportWorldEvent){
+  def handle(e:Events.ExportWorldEvent){
     import org.nlogo.api.Dump
     e.writer.println(Dump.csv.encode("OUTPUT"))
     Dump.csv.stringToCSV(e.writer, outputArea.text.getText())
@@ -60,7 +60,7 @@ class OutputWidget extends SingleErrorWidget with CommandCenterInterface with
     s.append(fontSize + "\n")
     s.toString
   }
-  override def load(strings:Array[String]): Object = {
+  override def load(strings: Seq[String]): Object = {
     val List(x1,y1,x2,y2) = strings.drop(1).take(4).map(_.toInt).toList
     setSize(x2 - x1, y2 - y1)
     if(strings.length > 5){ outputArea.fontSize(strings(5).toInt) }

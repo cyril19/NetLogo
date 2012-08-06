@@ -7,7 +7,7 @@ import org.nlogo.api.I18N
 import org.nlogo.window.{Events, Widget, InterfaceGlobalWidget}
 
 class SwitchWidget extends Switch with Editable with InterfaceGlobalWidget
-  with org.nlogo.window.Events.PeriodicUpdateEvent.Handler {
+  with org.nlogo.window.Events.PeriodicUpdateEventHandler {
 
   override def classDisplayName= I18N.gui.get("tabs.run.widgets.switch")
   override def propertySet = Properties.swiitch
@@ -66,10 +66,10 @@ class SwitchWidget extends Switch with Editable with InterfaceGlobalWidget
     s.toString
   }
 
-  def load(strings: Array[String]): AnyRef = {
+  def load(strings: Seq[String]): AnyRef = {
     name(org.nlogo.api.ModelReader.restoreLines(strings(6)), true)
     isOn = strings(7).toDouble == 0
-    val Array(x1,y1,x2,y2) = strings.drop(1).take(4).map(_.toInt)
+    val Seq(x1, y1, x2, y2) = strings.drop(1).take(4).map(_.toInt)
     setSize(x2 - x1, y2 - y1)
     this
   }

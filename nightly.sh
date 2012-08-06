@@ -40,6 +40,10 @@ echo "*** done: slow:test"
 if [ ${PIPESTATUS[0]} -ne 0 ] ; then echo "*** FAILED: nogen slow:test"; exit 1; fi
 echo "*** done: nogen slow:test"
 
+./sbt all 2>&1 | tee tmp/nightly/6-sbt-all.txt
+if [ ${PIPESTATUS[0]} -ne 0 ] ; then echo "*** FAILED: sbt all"; exit 1; fi
+echo "*** done: sbt all"
+
 ./sbt depend 2>&1 | tee tmp/nightly/7-depend.txt
 if [ ${PIPESTATUS[0]} -ne 0 ] ; then echo "*** FAILED: depend"; exit 1; fi
 echo "*** done: depend"

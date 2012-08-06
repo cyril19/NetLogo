@@ -93,8 +93,6 @@ public abstract strictfp class AbstractWorkspace
    */
   private ModelType modelType;
 
-  //public final WorldLoader worldLoader ;
-
   /// startup
 
   protected AbstractWorkspace(org.nlogo.agent.World world) {
@@ -308,24 +306,6 @@ public abstract strictfp class AbstractWorkspace
       str = str.substring(0, str.length() - 6);
     }
     return str;
-  }
-
-  /// procedures
-
-  private Map<String, Procedure> procedures = new HashMap<String, Procedure>();
-
-  public Map<String, Procedure> getProcedures() {
-    return procedures;
-  }
-
-  public void setProcedures(Map<String, Procedure> procedures) {
-    this.procedures = procedures;
-  }
-
-  public void init() {
-    for (Procedure procedure : procedures.values()) {
-      procedure.init(this);
-    }
   }
 
   /// methods that may be called from the job thread by prims
@@ -605,7 +585,7 @@ public abstract strictfp class AbstractWorkspace
     return new org.nlogo.api.LocalFile(filename).readFile().replaceAll("\r\n", "\n");
   }
 
-  public void loadWorld(String[] strings, WorldLoaderInterface worldInterface) {
+  public void loadWorld(scala.collection.Seq<String> strings, WorldLoaderInterface worldInterface) {
     WorldLoader loader = new WorldLoader();
     loader.load(strings, worldInterface);
   }
@@ -627,13 +607,13 @@ public abstract strictfp class AbstractWorkspace
   public void checkReporterSyntax(String source)
       throws CompilerException {
     compiler().checkReporterSyntax
-        (source, world.program(), getProcedures(), getExtensionManager(), false);
+        (source, world.program(), procedures(), getExtensionManager(), false);
   }
 
   public void checkCommandSyntax(String source)
       throws CompilerException {
     compiler().checkCommandSyntax
-        (source, world.program(), getProcedures(), getExtensionManager(), false);
+        (source, world.program(), procedures(), getExtensionManager(), false);
   }
 
   public boolean isConstant(String s) {
@@ -651,7 +631,7 @@ public abstract strictfp class AbstractWorkspace
   }
 
   public boolean isReporter(String s) {
-    return compiler().isReporter(s, world.program(), getProcedures(), getExtensionManager());
+    return compiler().isReporter(s, world.program(), procedures(), getExtensionManager());
   }
 
   public Token[] tokenizeForColorization(String s) {

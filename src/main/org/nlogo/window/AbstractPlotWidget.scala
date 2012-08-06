@@ -11,13 +11,13 @@ import org.nlogo.plot.{PlotManagerInterface, PlotLoader, PlotPen, Plot}
 import java.awt.GridBagConstraints.REMAINDER
 import java.awt.{List=>AWTList, _}
 import image.BufferedImage
-import org.nlogo.window.Events.{WidgetRemovedEvent, AfterLoadEvent}
+import Events.{WidgetRemovedEvent, AfterLoadEvent}
 
 abstract class AbstractPlotWidget(val plot:Plot, val plotManager: PlotManagerInterface)
         extends Widget with Editable with Plot.DirtyListener with
-                org.nlogo.window.Events.AfterLoadEvent.Handler with
-                org.nlogo.window.Events.WidgetRemovedEvent.Handler with
-                org.nlogo.window.Events.CompiledEvent.Handler {
+                Events.AfterLoadEventHandler with
+                Events.WidgetRemovedEventHandler with
+                Events.CompiledEventHandler {
 
   import AbstractPlotWidget._
 
@@ -248,7 +248,7 @@ abstract class AbstractPlotWidget(val plot:Plot, val plotManager: PlotManagerInt
     }
   }
 
-  def load(strings: Array[String]): Object = {
+  def load(strings: Seq[String]): Object = {
     val List(x1,y1,x2,y2) = strings.drop(1).take(4).map(_.toInt).toList
     setSize(x2 - x1, y2 - y1)
     if (7 < strings.length) {
@@ -256,7 +256,7 @@ abstract class AbstractPlotWidget(val plot:Plot, val plotManager: PlotManagerInt
       yLabel(if (strings(7) == "NIL") "" else strings(7))
     }
     if (13 < strings.length) { legend.open=strings(13).toBoolean }
-    PlotLoader.parsePlot(strings, plot)
+    PlotLoader.parsePlot(strings.toArray, plot)
     plotName(plot.name)
     clear()
     this
@@ -280,7 +280,7 @@ abstract class AbstractPlotWidget(val plot:Plot, val plotManager: PlotManagerInt
 
   def handle(e: WidgetRemovedEvent){ if(e.widget == this){ plotManager.forgetPlot(plot) } }
 
-  def handle(e:org.nlogo.window.Events.CompiledEvent){
+  def handle(e: Events.CompiledEvent){
     if(e.sourceOwner.isInstanceOf[ProceduresInterface]){
       plotManager.compilePlot(plot)
       recolor()
