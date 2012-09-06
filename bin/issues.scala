@@ -25,12 +25,10 @@ onLoadMessage := ""
 
 scalacOptions ++= Seq("-deprecation", "-unchecked", "-Xfatal-warnings")
 
-libraryDependencies ~= { seq =>
-    val vers = "0.9.0"
-    seq ++ Seq("net.databinder.dispatch" %% "core" % vers,
-               "net.liftweb" % "lift-json_2.9.1" % "2.4",
-               "org.slf4j" % "slf4j-nop" % "1.6.0")
-}
+libraryDependencies ++= Seq(
+  "net.databinder.dispatch" %% "core" % "0.9.1",
+  "net.liftweb" % "lift-json_2.9.1" % "2.4",
+  "org.slf4j" % "slf4j-nop" % "1.6.0")
 */
 
 import dispatch._
@@ -54,10 +52,7 @@ val req = base <<? Map("milestone" -> "13",
 val stream = Http(req OK as.Response(_.getResponseBodyAsStream)).apply
 val parsed = JsonParser.parse(new java.io.InputStreamReader(stream))
 val issues: List[Issue] =
-  (for {
-    JArray(objs) <- parsed
-    obj <- objs
-  } yield Issue.fromJson(obj)).toList
+  parsed.asInstanceOf[JArray].arr.map(Issue.fromJson)
 
 println(issues.size + " issues fixed!")
 for(Issue(n, title) <- issues.sortBy(_.number))
