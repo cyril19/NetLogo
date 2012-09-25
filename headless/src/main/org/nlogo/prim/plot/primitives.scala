@@ -86,13 +86,15 @@ class _clearplot extends PlotCommand() {
 }
 class _autoplotoff extends PlotCommand() {
   override def perform(context: Context) {
-    currentPlot(context).autoPlotOn = false
+    val plot = currentPlot(context)
+    plot.state = plot.state.copy(autoPlotOn = false)
     context.ip = next
   }
 }
 class _autoploton extends PlotCommand() {
   override def perform(context: Context) {
-    currentPlot(context).autoPlotOn = true
+    val plot = currentPlot(context)
+    plot.state = plot.state.copy(autoPlotOn = true)
     context.ip = next
   }
 }
@@ -100,8 +102,7 @@ class _autoploton extends PlotCommand() {
 class _plot extends PlotCommand(Syntax.NumberType) {
   override def perform(context: Context) {
     val y = argEvalDoubleValue(context, 0)
-    currentPen(context).plot(y)
-    currentPlot(context).makeDirty()
+    currentPlot(context).plot(y)
     context.ip = next
   }
 }
@@ -110,8 +111,7 @@ class _plotxy extends PlotCommand(Syntax.NumberType, Syntax.NumberType) {
   override def perform(context: Context) {
     val x = argEvalDoubleValue(context, 0)
     val y = argEvalDoubleValue(context, 1)
-    currentPen(context).plot(x, y)
-    currentPlot(context).makeDirty()
+    currentPlot(context).plot(x, y)
     context.ip = next
   }
 }
@@ -124,9 +124,7 @@ class _setplotxrange extends PlotCommand(Syntax.NumberType, Syntax.NumberType) {
       throw new EngineException(context, this,
         "the minimum must be less than the maximum, but " +  min + " is greater than or equal to " + max)
     val plot = currentPlot(context)
-    plot.xMin = min
-    plot.xMax = max
-    plot.makeDirty()
+    plot.state = plot.state.copy(xMin = min, xMax = max)
     context.ip = next
   }
 }
@@ -139,9 +137,7 @@ class _setplotyrange extends PlotCommand(Syntax.NumberType, Syntax.NumberType) {
       throw new EngineException(context, this,
         "the minimum must be less than the maximum, but " +  min + " is greater than or equal to " + max)
     val plot = currentPlot(context)
-    plot.yMin = min
-    plot.yMax = max
-    plot.makeDirty()
+    plot.state = plot.state.copy(yMin = min, yMax = max)
     context.ip = next
   }
 }
@@ -160,16 +156,14 @@ class _histogram extends PlotCommand(Syntax.ListType) {
   override def perform(context: Context) {
     val list = argEvalList(context, 0)
     val pen = currentPen(context)
-    pen.plotListenerReset(false)
-    if(pen.interval <= 0)
+    if(pen.state.interval <= 0)
       throw new EngineException(context, this,
-        "You cannot histogram with a plot-pen-interval of " + Dump.number(pen.interval) + ".")
+        "You cannot histogram with a plot-pen-interval of " + Dump.number(pen.state.interval) + ".")
     val plot = currentPlot(context)
     plot.beginHistogram(pen)
     for(d <- list.scalaIterator.collect{case d: java.lang.Double => d.doubleValue})
       plot.nextHistogramValue(d)
     plot.endHistogram(pen)
-    plot.makeDirty()
     context.ip = next
   }
 }
@@ -233,7 +227,7 @@ class _exportplots extends PlotCommand(Syntax.StringType) {
 
 class _autoplot extends PlotReporter(Syntax.BooleanType) {
   override def report(context: Context) =
-    Boolean.box(currentPlot(context).autoPlotOn)
+    Boolean.box(currentPlot(context).state.autoPlotOn)
 }
 class _plotname extends PlotReporter(Syntax.StringType) {
   override def report(context: Context) =
@@ -241,19 +235,19 @@ class _plotname extends PlotReporter(Syntax.StringType) {
 }
 class _plotxmin extends PlotReporter(Syntax.NumberType) {
   override def report(context: Context) =
-    Double.box(currentPlot(context).xMin)
+    Double.box(currentPlot(context).state.xMin)
 }
 class _plotxmax extends PlotReporter(Syntax.NumberType) {
   override def report(context: Context) =
-    Double.box(currentPlot(context).xMax)
+    Double.box(currentPlot(context).state.xMax)
 }
 class _plotymin extends PlotReporter(Syntax.NumberType) {
   override def report(context: Context) =
-    Double.box(currentPlot(context).yMin)
+    Double.box(currentPlot(context).state.yMin)
 }
 class _plotymax extends PlotReporter(Syntax.NumberType) {
   override def report(context: Context) =
-    Double.box(currentPlot(context).yMax)
+    Double.box(currentPlot(context).state.yMax)
 }
 class _plotpenexists extends PlotReporter(Syntax.BooleanType, Syntax.StringType) {
   override def report(context: Context) =
@@ -266,40 +260,44 @@ class _plotpenexists extends PlotReporter(Syntax.BooleanType, Syntax.StringType)
 
 final class _plotpendown extends PlotCommand() {
   override def perform(context: Context) {
-    currentPen(context).isDown = true
+    val pen = currentPen(context)
+    pen.state = pen.state.copy(isDown = true)
     context.ip = next
   }
 }
 final class _plotpenup extends PlotCommand() {
   override def perform(context: Context) {
-    currentPen(context).isDown = false
+    val pen = currentPen(context)
+    pen.state = pen.state.copy(isDown = false)
     context.ip = next
   }
 }
 final class _plotpenshow extends PlotCommand() {
   override def perform(context: Context) {
-    currentPen(context).hidden = false
+    val pen = currentPen(context)
+    pen.state = pen.state.copy(hidden = false)
     context.ip = next
   }
 }
 final class _plotpenhide extends PlotCommand() {
   override def perform(context: Context) {
-    currentPen(context).hidden = true
+    val pen = currentPen(context)
+    pen.state = pen.state.copy(hidden = true)
     context.ip = next
   }
 }
 final class _plotpenreset extends PlotCommand() {
   override def perform(context: Context) {
     currentPen(context).hardReset()
-    currentPen(context).plotListenerReset(true)
-    currentPlot(context).makeDirty()
     context.ip = next
   }
 }
 
 final class _setplotpeninterval extends PlotCommand(Syntax.NumberType) {
   override def perform(context: Context) {
-    currentPen(context).interval = argEvalDoubleValue(context, 0)
+    val pen = currentPen(context)
+    pen.state = pen.state.copy(
+      interval = argEvalDoubleValue(context, 0))
     context.ip = next
   }
 }
@@ -312,7 +310,8 @@ final class _setplotpenmode extends PlotCommand(Syntax.NumberType) {
       throw new EngineException(context, this,
         mode + " is not a valid plot pen mode (valid modes are 0, 1, and 2)")
     }
-    currentPen(context).mode = mode
+    val pen = currentPen(context)
+    pen.state = pen.state.copy(mode = mode)
     context.ip = next
   }
 }
@@ -320,9 +319,11 @@ final class _setplotpenmode extends PlotCommand(Syntax.NumberType) {
 final class _setplotpencolor extends PlotCommand(Syntax.NumberType) {
   import org.nlogo.api.Color
   override def perform(context: Context) {
-    currentPen(context).color =
-      Color.getARGBbyPremodulatedColorNumber(
-        Color.modulateDouble(argEvalDoubleValue(context, 0)))
+    val pen = currentPen(context)
+    pen.state = pen.state.copy(
+      color =
+        Color.getARGBbyPremodulatedColorNumber(
+          Color.modulateDouble(argEvalDoubleValue(context, 0))))
     context.ip = next
   }
 }
