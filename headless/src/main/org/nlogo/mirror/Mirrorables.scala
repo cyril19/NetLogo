@@ -155,49 +155,6 @@ object Mirrorables {
       _*) = Stream.from(0)
   }
 
-  class MirrorablePlot(val p: plot.Plot, val plots: List[plot.Plot]) extends Mirrorable {
-    import MirrorablePlot._
-    override def kind = Plot
-    override def agentKey = AgentKey(kind, plots.indexOf(p))
-    override val variables = Map(
-      pvXMin -> Double.box(p.xMin),
-      pvXMax -> Double.box(p.xMax),
-      pvYMin -> Double.box(p.yMin),
-      pvYMax -> Double.box(p.yMax),
-      pvLegendIsOpen -> Boolean.box(p.legendIsOpen))
-  }
-
-  object MirrorablePlotPen {
-    val Seq( // init vals for indices by pattern matching over range of getters
-      ppvName,
-      ppvIsDown,
-      ppvMode,
-      ppvInterval,
-      ppvColor,
-      ppvX,
-      ppvPoints,
-      _*) = Stream.from(0)
-  }
-  class MirrorablePlotPen(val pen: plot.PlotPen, val plots: List[plot.Plot]) extends Mirrorable {
-    import MirrorablePlotPen._
-    override def kind = PlotPen
-    override def agentKey = {
-      // we combine the plot id and the pen id (which are both
-      // originally Ints) into a single Long:
-      val plotId: Long = plots.indexOf(pen.plot)
-      val penId: Long = pen.plot.pens.indexOf(pen)
-      AgentKey(kind, (plotId << 32) | penId)
-    }
-    override val variables = Map(
-      ppvName -> pen.name,
-      ppvIsDown -> Boolean.box(pen.isDown),
-      ppvMode -> Int.box(pen.mode),
-      ppvInterval -> Double.box(pen.interval),
-      ppvColor -> org.nlogo.api.Color.argbToColor(pen.color),
-      ppvX -> Double.box(pen.x),
-      ppvPoints -> pen.points.toList)
-  }
-
   object MirrorableWidgetValue {
     val wvvValueString = 0
   }
