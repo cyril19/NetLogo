@@ -274,6 +274,17 @@ class FakeWorld(state: State) extends api.World {
   def allStoredValues: Iterator[AnyRef] = unsupported
   def trailDrawer: api.TrailDrawerInterface = unsupported
   def mayHavePartiallyTransparentObjects: Boolean = unsupported
+  def timer: org.nlogo.api.Timer = unsupported
+  def setObserverVariableByName(variableName: String, value: AnyRef): Unit = unsupported
+  def observerOwnsIndexOf(name: String): Int = unsupported
+  def auxRNG: org.nlogo.util.MersenneTwisterFast = unsupported
+  def mainRNG: org.nlogo.util.MersenneTwisterFast = unsupported
+  def equalDimensions(d: org.nlogo.api.WorldDimensions): Boolean = unsupported
+  def setDimensionVariable(variableName: String, value: Int, d: org.nlogo.api.WorldDimensions): org.nlogo.api.WorldDimensions = unsupported
+  def isDimensionVariable(variableName: String): Boolean = unsupported
+  def getDimensions: org.nlogo.api.WorldDimensions = unsupported
+  def realloc(): Unit = unsupported
+  def clearGlobals(): Unit = unsupported
 
   private def unsupported = throw new UnsupportedOperationException
 }
